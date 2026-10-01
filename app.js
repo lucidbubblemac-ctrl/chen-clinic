@@ -58,6 +58,7 @@ function today(){return ymd(new Date());}
 function nowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
 var COLORS=["#23675A","#D0703C","#4A6FB5","#B5487A","#7A62C4","#3C8FA8","#9A7B1E","#5E8A3A"];
 function pc(p){return (S.settings.oneColor!==false)?"#17864F":(p&&p.color)||"#999";}
+function futureOf(s){var wd=pd(s.date).getDay();return S.sessions.filter(function(o){return o.id!==s.id&&o.pid===s.pid&&o.date>s.date&&o.status==="scheduled"&&((s.series&&o.series===s.series)||(pd(o.date).getDay()===wd&&o.time===s.time));});}
 function P(id){for(var i=0;i<S.patients.length;i++)if(S.patients[i].id===id)return S.patients[i];return null;}
 function SS(id){for(var i=0;i<S.sessions.length;i++)if(S.sessions[i].id===id)return S.sessions[i];return null;}
 function initials(n){n=(n||"?").trim();var p=n.split(/\s+/);return(p[0][0]||"")+(p[1]?p[1][0]:"");}
@@ -361,7 +362,7 @@ function sessionForm(s,isNew,preset){
   h+='<div class="f"><label>סטטוס</label><div class="seg" id="s_st">'+[["scheduled","מתוכנן"],["done","בוצע"],["noshow","לא הגיע"],["cancel","בוטל"]].map(function(x){return'<button type="button" data-v="'+x[0]+'" class="'+(s.status===x[0]?"on":"")+'">'+x[1]+"</button>";}).join("")+"</div></div>";
   h+='<label class="switch" for="s_c" id="cw"><span>לחייב על הטיפול</span><input id="s_c" type="checkbox"'+(s.charge?" checked":"")+"></label>";
   h+='<div class="two"><div class="f"><label for="s_pr">מחיר (₪)</label><input id="s_pr" type="number" inputmode="numeric" value="'+s.price+'"></div><div class="f"><label for="s_m">אמצעי תשלום</label><select id="s_m">'+["ביט","פייבוקס","מזומן","העברה","אשראי","קופת חולים","צ׳ק"].map(function(x){return"<option"+(s.method===x?" selected":"")+">"+x+"</option>";}).join("")+"</select></div></div>";
-  if(!isNew&&s.series){var futN=S.sessions.filter(function(o){return o.series===s.series&&o.id!==s.id&&o.date>s.date&&o.status==="scheduled";}).length;if(futN)h+='<label class="switch" for="s_all"><span>להחיל שעה, משך, מחיר ויום גם על '+futN+' הטיפולים הבאים בסדרה</span><input id="s_all" type="checkbox"></label>';}
+  if(!isNew){var futN=futureOf(s).length;if(futN)h+='<label class="switch" for="s_all"><span>להחיל שעה, משך, מחיר ויום גם על '+futN+' הטיפולים הבאים בסדרה</span><input id="s_all" type="checkbox"></label>';}
   h+='<label class="switch" for="s_pd"><span>שולם</span><input id="s_pd" type="checkbox"'+(s.paid?" checked":"")+"></label>";
   h+='<div class="f"><label for="s_n">סיכום טיפול / הערה</label><textarea id="s_n" placeholder="מה עבדנו היום, התקדמות, משימה לבית">'+esc(s.note||"")+"</textarea></div>";
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button>'+(!isNew&&s.paid&&billable(s)?'<button class="btn ghost" type="button" id="s_pc">אישור תשלום</button>':"")+(!isNew?'<button class="btn ghost" type="button" id="s_rem">תזכורת</button><button class="btn danger" type="button" id="s_del">מחיקה</button>':'<button class="btn ghost" type="button" id="s_x">סגירה</button>')+"</div></form>";
@@ -391,19 +392,19 @@ function sessionForm(s,isNew,preset){
         for(var i=0;i<n;i++){var c=Object.assign({},o,{id:uid()+i,date:addDays(o.date,i*7),series:series});if(i>0){c.status="scheduled";c.paid=false;c.note="";c.charge=false;}S.sessions.push(c);}
         toast(n>1?n+" טיפולים נקבעו":"הטיפול נקבע");
       }else{
-        var allEl=r.querySelector("#s_all"),oldDate=s.date;
+        var allEl=r.querySelector("#s_all"),oldDate=s.date,futList=futureOf(s);
         var finish=function(all){
           var cnt=0;
           if(all){
             var shift=Math.round((pd(o.date)-pd(oldDate))/864e5);
-            S.sessions.forEach(function(x){if(x.series===s.series&&x.id!==s.id&&x.date>oldDate&&x.status==="scheduled"){x.time=o.time;x.dur=o.dur;x.price=o.price;x.pid=o.pid;if(shift)x.date=addDays(x.date,shift);cnt++;}});
+            futList.forEach(function(x){{x.time=o.time;x.dur=o.dur;x.price=o.price;x.pid=o.pid;if(shift)x.date=addDays(x.date,shift);cnt++;}});
           }
           Object.assign(s,o);UI.sel=o.date;save();closeSheet();render();toast(cnt?"נשמר, עודכנו עוד "+cnt+" טיפולים":"נשמר");
         };
         var changedSched=o.date!==s.date||o.time!==s.time||o.dur!==(+s.dur)||o.price!==(+s.price);
         if(allEl&&allEl.checked){finish(true);return;}
         if(allEl&&changedSched){
-          var futN2=S.sessions.filter(function(x){return x.series===s.series&&x.id!==s.id&&x.date>oldDate&&x.status==="scheduled";}).length;
+          var futN2=futList.length;
           sheet('<h3>לשמור את השינוי</h3><p style="color:var(--ink-2);margin:0 0 12px">'+esc((P(o.pid)||{}).name||"")+' · '+niceDate(o.date)+' '+o.time+'</p><div class="list"><button class="btn block" type="button" id="ap1">רק את הטיפול הזה</button><button class="btn block ghost" type="button" id="apall">גם את כל '+futN2+' הטיפולים הבאים</button></div>',function(r2){
             r2.querySelector("#ap1").onclick=function(){finish(false);};
             r2.querySelector("#apall").onclick=function(){finish(true);};
@@ -524,7 +525,7 @@ function settings(){
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
   h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
-  h+='<section><h2>נתונים <small>גרסה 10</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
+  h+='<section><h2>נתונים <small>גרסה 11</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
@@ -673,7 +674,7 @@ document.addEventListener("pointercancel",function(e){endDrag(e,true);});
 document.addEventListener("click",function(e){if(suppressClick){e.stopPropagation();e.preventDefault();suppressClick=false;}},true);
 function moveSession(s,date,time){
   if(s.date===date&&s.time===time)return;
-  var fut=s.series?S.sessions.filter(function(o){return o.series===s.series&&o.id!==s.id&&o.date>s.date&&o.status==="scheduled";}):[];
+  var fut=futureOf(s);
   var p=P(s.pid)||{name:""};
   function apply(all){
     var shift=Math.round((pd(date)-pd(s.date))/864e5);
@@ -741,7 +742,7 @@ document.addEventListener("visibilitychange",function(){if(document.hidden&&S.se
 
 /* one-time data fixes (names matched by hash, never stored in code) */
 function nh(s){s=String(s||"").replace(/\s+/g," ").trim();var x=5381;for(var i=0;i<s.length;i++){x=((x<<5)+x+s.charCodeAt(i))|0;}return x;}
-function fixups(){var a=fix1(),b=fix4();return a||b;}
+function fixups(){return false;}
 function fix1(){
   if(S.settings.fix1)return false;
   var t=S.patients.filter(function(p){return nh(p.name)===1436732829;})[0];
