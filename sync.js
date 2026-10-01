@@ -174,6 +174,7 @@ function hideGate(){if(gate){gate.remove();gate=null;}}
 
 function unlockData(userId,pw,isNew){
   uid=userId;
+  var mm=meta();if(mm.uid!==userId){app.replaceState({settings:{},patients:[],sessions:[],expenses:[],deleted:{}});mm.rev=null;delete mm.dirtyAt;setMeta(mm);}
   return fetchRow().then(function(row){
     if(row){
       salt=row.salt;

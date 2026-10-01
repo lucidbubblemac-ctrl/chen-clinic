@@ -391,12 +391,26 @@ function sessionForm(s,isNew,preset){
         for(var i=0;i<n;i++){var c=Object.assign({},o,{id:uid()+i,date:addDays(o.date,i*7),series:series});if(i>0){c.status="scheduled";c.paid=false;c.note="";c.charge=false;}S.sessions.push(c);}
         toast(n>1?n+" טיפולים נקבעו":"הטיפול נקבע");
       }else{
-        var allEl=r.querySelector("#s_all"),oldDate=s.date,cnt=0;
-        if(allEl&&allEl.checked){
-          var shift=Math.round((pd(o.date)-pd(oldDate))/864e5);
-          S.sessions.forEach(function(x){if(x.series===s.series&&x.id!==s.id&&x.date>oldDate&&x.status==="scheduled"){x.time=o.time;x.dur=o.dur;x.price=o.price;x.pid=o.pid;if(shift)x.date=addDays(x.date,shift);cnt++;}});
+        var allEl=r.querySelector("#s_all"),oldDate=s.date;
+        var finish=function(all){
+          var cnt=0;
+          if(all){
+            var shift=Math.round((pd(o.date)-pd(oldDate))/864e5);
+            S.sessions.forEach(function(x){if(x.series===s.series&&x.id!==s.id&&x.date>oldDate&&x.status==="scheduled"){x.time=o.time;x.dur=o.dur;x.price=o.price;x.pid=o.pid;if(shift)x.date=addDays(x.date,shift);cnt++;}});
+          }
+          Object.assign(s,o);UI.sel=o.date;save();closeSheet();render();toast(cnt?"נשמר, עודכנו עוד "+cnt+" טיפולים":"נשמר");
+        };
+        var changedSched=o.date!==s.date||o.time!==s.time||o.dur!==(+s.dur)||o.price!==(+s.price);
+        if(allEl&&allEl.checked){finish(true);return;}
+        if(allEl&&changedSched){
+          var futN2=S.sessions.filter(function(x){return x.series===s.series&&x.id!==s.id&&x.date>oldDate&&x.status==="scheduled";}).length;
+          sheet('<h3>לשמור את השינוי</h3><p style="color:var(--ink-2);margin:0 0 12px">'+esc((P(o.pid)||{}).name||"")+' · '+niceDate(o.date)+' '+o.time+'</p><div class="list"><button class="btn block" type="button" id="ap1">רק את הטיפול הזה</button><button class="btn block ghost" type="button" id="apall">גם את כל '+futN2+' הטיפולים הבאים</button></div>',function(r2){
+            r2.querySelector("#ap1").onclick=function(){finish(false);};
+            r2.querySelector("#apall").onclick=function(){finish(true);};
+          });
+          return;
         }
-        Object.assign(s,o);toast(cnt?"נשמר, עודכנו עוד "+cnt+" טיפולים":"נשמר");}
+        finish(false);return;}
       UI.sel=o.date;save();closeSheet();render();});
   });
 }
@@ -510,7 +524,7 @@ function settings(){
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
   h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
-  h+='<section><h2>נתונים <small>גרסה 9</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
+  h+='<section><h2>נתונים <small>גרסה 10</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
