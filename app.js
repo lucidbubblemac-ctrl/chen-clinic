@@ -665,7 +665,7 @@ document.addEventListener("visibilitychange",function(){if(document.hidden&&S.se
 
 /* one-time data fixes (names matched by hash, never stored in code) */
 function nh(s){s=String(s||"").replace(/\s+/g," ").trim();var x=5381;for(var i=0;i<s.length;i++){x=((x<<5)+x+s.charCodeAt(i))|0;}return x;}
-function fixups(){var a=fix1(),b=fix2();return a||b;}
+function fixups(){var a=fix1(),b=fix3();return a||b;}
 function fix1(){
   if(S.settings.fix1)return false;
   var t=S.patients.filter(function(p){return nh(p.name)===1436732829;})[0];
@@ -696,6 +696,24 @@ function fix2(){
     if(old<"2026-10-01"&&x.date>="2026-10-01"&&x.status==="done"&&!x.paid){x.status="scheduled";}
   });
   S.settings.fix2=true;
+  return true;
+}
+/* fix3 (final): from 2026-09-01 ex-Monday kids -> Tuesday, Tuesday kids -> Wednesday, ex-Wednesday kids -> Thursday.
+   Works from the original schedule or after fix2; moves inside the same week. */
+function fix3(){
+  if(S.settings.fix3)return false;
+  var G={thu:[677595487,419579227,866668053,1436732829],tue:[-1263149329,2087420090,-204185861,1445323908,2142451688],wed:[1657625772,1092614600,294268316,1650537475]};
+  var tgt={};S.patients.forEach(function(p){var h=nh(p.name);if(G.thu.indexOf(h)>-1)tgt[p.id]=4;else if(G.tue.indexOf(h)>-1)tgt[p.id]=2;else if(G.wed.indexOf(h)>-1)tgt[p.id]=3;});
+  if(!Object.keys(tgt).length)return false;
+  S.sessions.forEach(function(x){
+    var tw=tgt[x.pid];if(!tw||x.date<"2026-09-01")return;
+    var wd=pd(x.date).getDay();if(wd<1||wd>4||wd===tw)return;
+    var old=x.date;x.date=addDays(x.date,tw-wd);
+    if(x.date<"2026-09-01"){x.date=old;return;}
+    if(old<"2026-10-01"&&x.date>="2026-10-01"&&x.status==="done"&&!x.paid)x.status="scheduled";
+    if(old>="2026-10-01"&&x.date<"2026-10-01"&&x.status==="scheduled")x.status="done";
+  });
+  S.settings.fix3=true;S.settings.fix2=true;
   return true;
 }
 window.__app={
