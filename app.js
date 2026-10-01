@@ -57,6 +57,7 @@ function monthName(m){var a=m.split("-");return MONTHS[+a[1]-1]+" "+a[0];}
 function today(){return ymd(new Date());}
 function nowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
 var COLORS=["#23675A","#D0703C","#4A6FB5","#B5487A","#7A62C4","#3C8FA8","#9A7B1E","#5E8A3A"];
+function pc(p){return (S.settings.oneColor!==false)?"#23675A":(p&&p.color)||"#999";}
 function P(id){for(var i=0;i<S.patients.length;i++)if(S.patients[i].id===id)return S.patients[i];return null;}
 function SS(id){for(var i=0;i<S.sessions.length;i++)if(S.sessions[i].id===id)return S.sessions[i];return null;}
 function initials(n){n=(n||"?").trim();var p=n.split(/\s+/);return(p[0][0]||"")+(p[1]?p[1][0]:"");}
@@ -141,7 +142,7 @@ function sRow(s,opts){
   var acts="";
   if(opts.quick&&s.status==="scheduled")acts='<div class="actions"><span class="mini ok" data-act="st" data-id="'+s.id+'" data-v="done">בוצע ✓</span></div>';
   else if(opts.quick&&billable(s)&&!s.paid)acts='<div class="actions"><span class="mini acc" data-act="paid" data-id="'+s.id+'">סמני שולם</span></div>';
-  return'<button class="row" data-act="edit-session" data-id="'+s.id+'"><div class="time num">'+s.time+(opts.date?"<small>"+shortDate(s.date)+"</small>":"<small>"+s.dur+" דק׳</small>")+'</div><span class="dot" style="background:'+p.color+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+statusPill(s)+" "+payPill(s)+(s.note?" · "+esc(s.note):"")+"</div></div>"+acts+"</button>";
+  return'<button class="row" data-act="edit-session" data-id="'+s.id+'"><div class="time num">'+s.time+(opts.date?"<small>"+shortDate(s.date)+"</small>":"<small>"+s.dur+" דק׳</small>")+'</div><span class="dot" style="background:'+pc(p)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+statusPill(s)+" "+payPill(s)+(s.note?" · "+esc(s.note):"")+"</div></div>"+acts+"</button>";
 }
 
 function vToday(){
@@ -164,9 +165,9 @@ function vToday(){
   h+='<section><h2>הלו״ז של היום <small class="num">'+money(list.filter(function(s){return s.status!=="cancel";}).reduce(function(a,s){return a+(+s.price||0);},0))+"</small></h2>";
   h+=list.length?'<div class="list">'+list.map(function(s){return sRow(s,{quick:true});}).join("")+"</div>":'<div class="empty">אין טיפולים היום. <button class="link" data-act="new-session">קביעת טיפול</button></div>';
   h+="</section>";
-  if(stale.length){h+='<section><h2>לעדכן סטטוס <small>'+stale.length+" טיפולים שעברו</small></h2><div class=\"list\">"+stale.slice(0,6).map(function(s){var p=P(s.pid)||{name:"",color:"#999"};return'<div class="row"><div class="time num">'+s.time+"<small>"+shortDate(s.date)+'</small></div><span class="dot" style="background:'+p.color+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div></div><div class="actions"><button class="mini ok" data-act="st" data-id="'+s.id+'" data-v="done">בוצע</button><button class="mini bad" data-act="st" data-id="'+s.id+'" data-v="noshow">לא הגיע</button></div></div>';}).join("")+"</div></section>";}
-  if(tom.length){h+='<section><h2>מחר <small>תזכורות להורים</small></h2><div class="list">'+tom.map(function(s){var p=P(s.pid)||{name:"",color:"#999"};return'<div class="row"><div class="time num">'+s.time+'</div><span class="dot" style="background:'+p.color+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+esc(p.parent||"")+'</div></div><button class="mini" data-act="remind" data-id="'+s.id+'">תזכורת</button></div>';}).join("")+"</div></section>";}
-  if(debtors.length){h+='<section><h2>חובות פתוחים <small class="num">'+money(owed())+'</small></h2><div class="list">'+debtors.slice(0,5).map(function(x){var p=P(x[0])||{name:"(נמחק)",color:"#999"};return'<button class="row" data-act="open-patient" data-id="'+x[0]+'"><div class="av" style="background:'+p.color+'">'+esc(initials(p.name))+'</div><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+esc(p.payer||"")+'</div></div><span class="pill p-owe num">'+money(x[1])+"</span></button>";}).join("")+"</div></section>";}
+  if(stale.length){h+='<section><h2>לעדכן סטטוס <small>'+stale.length+" טיפולים שעברו</small></h2><div class=\"list\">"+stale.slice(0,6).map(function(s){var p=P(s.pid)||{name:"",color:"#999"};return'<div class="row"><div class="time num">'+s.time+"<small>"+shortDate(s.date)+'</small></div><span class="dot" style="background:'+pc(p)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div></div><div class="actions"><button class="mini ok" data-act="st" data-id="'+s.id+'" data-v="done">בוצע</button><button class="mini bad" data-act="st" data-id="'+s.id+'" data-v="noshow">לא הגיע</button></div></div>';}).join("")+"</div></section>";}
+  if(tom.length){h+='<section><h2>מחר <small>תזכורות להורים</small></h2><div class="list">'+tom.map(function(s){var p=P(s.pid)||{name:"",color:"#999"};return'<div class="row"><div class="time num">'+s.time+'</div><span class="dot" style="background:'+pc(p)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+esc(p.parent||"")+'</div></div><button class="mini" data-act="remind" data-id="'+s.id+'">תזכורת</button></div>';}).join("")+"</div></section>";}
+  if(debtors.length){h+='<section><h2>חובות פתוחים <small class="num">'+money(owed())+'</small></h2><div class="list">'+debtors.slice(0,5).map(function(x){var p=P(x[0])||{name:"(נמחק)",color:"#999"};return'<button class="row" data-act="open-patient" data-id="'+x[0]+'"><div class="av" style="background:'+pc(p)+'">'+esc(initials(p.name))+'</div><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+esc(p.payer||"")+'</div></div><span class="pill p-owe num">'+money(x[1])+"</span></button>";}).join("")+"</div></section>";}
   return h;
 }
 
@@ -192,7 +193,7 @@ function vCalWeek(){
     h+='<div class="wkcol'+(d2===t?" today":"")+'" data-act="slot" data-date="'+d2+'" data-start="'+st+'" data-hh="'+HH+'">';
     sessionsOn(d2).forEach(function(s){var p=P(s.pid)||{name:"?",color:"#999"};var tp=(toMin(s.time)-st*60)/60*HH,ht=Math.max(22,(+s.dur)/60*HH-2);
       var cls=s.status==="done"?" done":s.status==="cancel"?" cancel":s.status==="noshow"?" noshow":"";
-      h+='<button class="wev'+cls+'" data-act="edit-session" data-id="'+s.id+'" style="top:'+(tp+1)+"px;height:"+ht+"px;background:"+p.color+'"><span class="num">'+s.time+"</span>"+esc((p.name||"").split(" ")[0])+"</button>";});
+      h+='<button class="wev'+cls+'" data-act="edit-session" data-id="'+s.id+'" style="top:'+(tp+1)+"px;height:"+ht+"px;background:"+pc(p)+'"><span class="num">'+s.time+"</span>"+esc((p.name||"").split(" ")[0])+"</button>";});
     if(d2===t){var nm=nowMin();if(nm>=st*60&&nm<=en*60)h+='<div class="wknow" style="top:'+((nm-st*60)/60*HH)+'px"></div>';}
     h+="</div>";}
   h+="</div></div>";
@@ -208,11 +209,11 @@ function vCalMonth(){
   var weeks=Math.ceil((pd(first).getDay()+new Date(+m.slice(0,4),+m.slice(5,7),0).getDate())/7);
   for(var i=0;i<weeks*7;i++){var dd=addDays(start,i),list=sessionsOn(dd).filter(function(s){return s.status!=="cancel";});
     var out=dd.slice(0,7)!==m;
-    h+='<button class="mday'+(out?" out":"")+(dd===t?" today":"")+'" data-act="day-open" data-v="'+dd+'"><b class="num">'+pd(dd).getDate()+'</b><span class="mdots">'+list.slice(0,4).map(function(s){var p=P(s.pid)||{color:"#999"};return'<i style="background:'+p.color+'"></i>';}).join("")+"</span>"+(list.length?'<small class="num">'+list.length+"</small>":"")+"</button>";}
+    h+='<button class="mday'+(out?" out":"")+(dd===t?" today":"")+'" data-act="day-open" data-v="'+dd+'"><b class="num">'+pd(dd).getDate()+'</b><span class="mdots">'+list.slice(0,4).map(function(s){var p=P(s.pid)||{color:"#999"};return'<i style="background:'+pc(p)+'"></i>';}).join("")+"</span>"+(list.length?'<small class="num">'+list.length+"</small>":"")+"</button>";}
   h+="</div></div>";
   var byPat={};inMonth.forEach(function(s){if(s.status!=="cancel")byPat[s.pid]=(byPat[s.pid]||0)+1;});
   var ks=Object.keys(byPat).sort(function(a,b){return byPat[b]-byPat[a];});
-  if(ks.length)h+='<section><h2>טיפולים החודש לפי מטופל</h2><div class="list">'+ks.map(function(k){var p=P(k)||{name:"(נמחק)",color:"#999"};return'<button class="row" data-act="open-patient" data-id="'+k+'"><span class="dot" style="background:'+p.color+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div></div><b class="num">'+byPat[k]+"</b></button>";}).join("")+"</div></section>";
+  if(ks.length)h+='<section><h2>טיפולים החודש לפי מטופל</h2><div class="list">'+ks.map(function(k){var p=P(k)||{name:"(נמחק)",color:"#999"};return'<button class="row" data-act="open-patient" data-id="'+k+'"><span class="dot" style="background:'+pc(p)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div></div><b class="num">'+byPat[k]+"</b></button>";}).join("")+"</div></section>";
   return h;
 }
 function vCal(){
@@ -235,7 +236,7 @@ function vCal(){
   list.forEach(function(s){var p=P(s.pid)||{name:"(נמחק)",color:"#999"};var top_=(toMin(s.time)-st*60)/60*HH,ht=Math.max(30,(+s.dur)/60*HH-3);
     var cls=s.status==="done"?" done":s.status==="cancel"?" cancel":s.status==="noshow"?" noshow":"";
     if(s.status!=="cancel"&&clashes(s))cls+=" clash";
-    h+='<button class="ev'+cls+'" data-act="edit-session" data-id="'+s.id+'" style="top:'+(top_+1)+"px;height:"+ht+"px;border-inline-start-color:"+p.color+'"><b>'+esc(p.name)+'</b><span class="num">'+s.time+"-"+fromMin(toMin(s.time)+(+s.dur))+" · "+(STATUS[s.status]||STATUS.scheduled)[0]+"</span></button>";});
+    h+='<button class="ev'+cls+'" data-act="edit-session" data-id="'+s.id+'" style="top:'+(top_+1)+"px;height:"+ht+"px;border-inline-start-color:"+pc(p)+'"><b>'+esc(p.name)+'</b><span class="num">'+s.time+"-"+fromMin(toMin(s.time)+(+s.dur))+" · "+(STATUS[s.status]||STATUS.scheduled)[0]+"</span></button>";});
   if(sel===t){var nm=nowMin();if(nm>=st*60&&nm<=en*60)h+='<div class="nowline" style="top:'+((nm-st*60)/60*HH)+'px"></div>';}
   h+="</div>";
   return h;
@@ -251,7 +252,7 @@ function vPatients(){
   h+='<section class="list">';
   if(!list.length)h+='<div class="empty">'+(S.patients.length?"לא נמצאו מטופלים":"עדיין אין מטופלים")+'. <button class="link" data-act="new-patient">הוספת מטופל</button></div>';
   list.forEach(function(p){var n=nextSession(p.id),o=owed(p.id);
-    h+='<button class="row" data-act="open-patient" data-id="'+p.id+'"><div class="av" style="background:'+p.color+'">'+esc(initials(p.name))+'</div><div class="grow"><div class="t">'+esc(p.name)+' <span style="font-weight:500;color:var(--ink-3);font-size:13.5px">'+age(p.birth)+'</span></div><div class="m">'+esc(p.type||"")+(n?" · הבא: "+DAYS_S[pd(n.date).getDay()]+" "+shortDate(n.date)+" "+n.time:" · אין טיפול קבוע")+"</div></div>"+(o?'<span class="pill p-owe num">'+money(o)+"</span>":"")+"</button>";});
+    h+='<button class="row" data-act="open-patient" data-id="'+p.id+'"><div class="av" style="background:'+pc(p)+'">'+esc(initials(p.name))+'</div><div class="grow"><div class="t">'+esc(p.name)+' <span style="font-weight:500;color:var(--ink-3);font-size:13.5px">'+age(p.birth)+'</span></div><div class="m">'+esc(p.type||"")+(n?" · הבא: "+DAYS_S[pd(n.date).getDay()]+" "+shortDate(n.date)+" "+n.time:" · אין טיפול קבוע")+"</div></div>"+(o?'<span class="pill p-owe num">'+money(o)+"</span>":"")+"</button>";});
   h+="</section>";return h;
 }
 
@@ -263,7 +264,7 @@ function vPatient(p){
   var o=owed(p.id),n=nextSession(p.id);
   var noshow=all.filter(function(s){return s.status==="noshow";}).length;
   var h='<header class="top"><button class="icon-btn" data-act="back" aria-label="חזרה">'+I.right+'</button><button class="mini" data-act="edit-patient" data-id="'+p.id+'">עריכה</button></header>';
-  h+='<div class="phead"><div class="av" style="background:'+p.color+'">'+esc(initials(p.name))+'</div><div><h1>'+esc(p.name)+'</h1><div class="sub" style="color:var(--ink-3)">'+[age(p.birth),esc(p.type||""),{active:"פעיל",paused:"בהפסקה",done:"סיים"}[p.status]].filter(Boolean).join(" · ")+"</div></div></div>";
+  h+='<div class="phead"><div class="av" style="background:'+pc(p)+'">'+esc(initials(p.name))+'</div><div><h1>'+esc(p.name)+'</h1><div class="sub" style="color:var(--ink-3)">'+[age(p.birth),esc(p.type||""),{active:"פעיל",paused:"בהפסקה",done:"סיים"}[p.status]].filter(Boolean).join(" · ")+"</div></div></div>";
   h+='<section class="stats"><div class="stat"><b class="num">'+done+'</b><span>טיפולים שבוצעו</span></div><div class="stat"><b class="num">'+thisM+'</b><span>החודש</span></div><div class="stat'+(o?" hl":"")+'"><b class="num">'+money(o)+'</b><span>לגבייה</span></div></section>';
   h+='<section class="actions"><button class="mini acc" data-act="new-session" data-pid="'+p.id+'">+ קביעת טיפול</button>'+(p.phone?'<a class="mini" href="https://wa.me/'+waPhone(p.phone)+'" target="_blank" rel="noopener">וואטסאפ להורה</a><button class="mini" data-act="copy" data-v="'+esc(p.phone)+'">העתקת טלפון</button>':"")+(o?'<button class="mini ok" data-act="pay-all" data-id="'+p.id+'">סימון הכל שולם</button>':"")+(p.payer!=="דרך המעסיק"?'<button class="mini" data-act="parent-sum" data-id="'+p.id+'">סיכום חודשי להורה</button>':"")+"</section>";
   h+='<section><h2>פרטים</h2><div class="card pad"><dl class="kv" style="margin:0">';
@@ -505,7 +506,7 @@ function settings(){
   var h='<h3>הגדרות</h3><form id="gf"><div class="two"><div class="f"><label for="g_n">השם שלך</label><input id="g_n" value="'+esc(st.name)+'"></div><div class="f"><label for="g_em">שם המעסיק</label><input id="g_em" value="'+esc(st.employer||"")+'" placeholder="לדוחות למעסיק"></div></div>';
   h+='<div class="two"><div class="f"><label for="g_p">מחיר ברירת מחדל (₪)</label><input id="g_p" type="number" inputmode="numeric" value="'+st.price+'"></div><div class="f"><label for="g_d">משך טיפול (דק׳)</label><input id="g_d" type="number" inputmode="numeric" value="'+st.dur+'"></div></div>';
   h+='<div class="two"><div class="f"><label for="g_s">יומן מתחיל ב-</label><input id="g_s" type="number" min="0" max="23" value="'+st.dayStart+'"></div><div class="f"><label for="g_e">ומסתיים ב-</label><input id="g_e" type="number" min="1" max="24" value="'+st.dayEnd+'"></div></div>';
-  h+='<label class="switch" for="g_c"><span>לחייב כברירת מחדל כשילד לא מגיע</span><input id="g_c" type="checkbox"'+(st.chargeNoShow?" checked":"")+"></label>";
+  h+='<label class="switch" for="g_oc"><span>צבע אחיד לכל המטופלים ביומן</span><input id="g_oc" type="checkbox"'+(st.oneColor!==false?" checked":"")+'></label><label class="switch" for="g_c"><span>לחייב כברירת מחדל כשילד לא מגיע</span><input id="g_c" type="checkbox"'+(st.chargeNoShow?" checked":"")+"></label>";
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
   h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
@@ -513,7 +514,7 @@ function settings(){
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
-      var a=Math.max(0,Math.min(23,+val(r,"g_s"))),b=Math.max(a+1,Math.min(24,+val(r,"g_e")));st.dayStart=a;st.dayEnd=b;st.chargeNoShow=r.querySelector("#g_c").checked;
+      var a=Math.max(0,Math.min(23,+val(r,"g_s"))),b=Math.max(a+1,Math.min(24,+val(r,"g_e")));st.dayStart=a;st.dayEnd=b;st.chargeNoShow=r.querySelector("#g_c").checked;st.oneColor=r.querySelector("#g_oc").checked;
       save();closeSheet();render();toast("ההגדרות נשמרו");});
     r.querySelector("#impf").addEventListener("change",function(){var f=this.files[0];if(!f)return;var fr=new FileReader();fr.onload=function(){
       var data;try{data=JSON.parse(fr.result);}catch(e){r.querySelector("#rs").innerHTML='<div class="warnbox" style="margin-top:10px">הקובץ לא נקרא.</div>';return;}
@@ -662,12 +663,28 @@ document.addEventListener("change",function(e){if(e.target.id==="jump"&&e.target
 document.addEventListener("keydown",function(e){if(e.key==="Escape")closeSheet();});
 document.addEventListener("visibilitychange",function(){if(document.hidden&&S.settings.pinHash){UI.lockAt=Date.now();}else if(!document.hidden&&S.settings.pinHash&&UI.lockAt&&Date.now()-UI.lockAt>60000){closeSheet();unlock();}});
 
+/* one-time data fixes (names matched by hash, never stored in code) */
+function nh(s){s=String(s||"").replace(/\s+/g," ").trim();var x=5381;for(var i=0;i<s.length;i++){x=((x<<5)+x+s.charCodeAt(i))|0;}return x;}
+function fixups(){
+  if(S.settings.fix1)return false;
+  var t=S.patients.filter(function(p){return nh(p.name)===1436732829;})[0];
+  if(!t)return false;
+  var occupied=function(d,tm){return S.sessions.some(function(x){return x.date===d&&x.time===tm&&x.status!=="cancel";});};
+  var n=0;
+  S.sessions.forEach(function(x){
+    if(x.pid!==t.id)return;
+    if(x.date==="2026-07-07"){var tj="09:00";while(occupied("2026-07-08",tj)&&tj<"18:00"){tj=fromMin(toMin(tj)+60);}x.date="2026-07-08";x.time=tj;n++;return;}
+    if(x.status==="scheduled"&&pd(x.date).getDay()===2){var nd=addDays(x.date,1),tm="12:00";while(occupied(nd,tm)&&tm<"18:00"){tm=fromMin(toMin(tm)+60);}x.date=nd;x.time=tm;n++;}
+  });
+  S.settings.fix1=true;
+  return true;
+}
 window.__app={
   getState:function(){return S;},
   replaceState:function(n){S=n;S.settings=Object.assign(blank().settings,S.settings||{});COLS.forEach(function(k){S[k]=S[k]||[];});S.deleted=S.deleted||{};initH();saveLocal();},
   stamp:stamp,saveLocal:saveLocal,initH:initH,
-  render:function(){if(!scrim&&!lockEl&&window.__authed)render();else render._pending=true;},
-  start:function(){window.__authed=true;render();if(S.settings.pinHash)unlock();},
+  render:function(){if(window.__authed&&fixups())save();if(!scrim&&!lockEl&&window.__authed)render();else render._pending=true;},
+  start:function(){window.__authed=true;if(fixups())save();render();if(S.settings.pinHash)unlock();},
   isEmpty:function(){return !S.patients.length&&!S.sessions.length&&!S.expenses.length;},
   toast:toast,esc:esc
 };
