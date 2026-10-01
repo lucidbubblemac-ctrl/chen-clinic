@@ -360,6 +360,7 @@ function sessionForm(s,isNew,preset){
   h+='<div class="f"><label>סטטוס</label><div class="seg" id="s_st">'+[["scheduled","מתוכנן"],["done","בוצע"],["noshow","לא הגיע"],["cancel","בוטל"]].map(function(x){return'<button type="button" data-v="'+x[0]+'" class="'+(s.status===x[0]?"on":"")+'">'+x[1]+"</button>";}).join("")+"</div></div>";
   h+='<label class="switch" for="s_c" id="cw"><span>לחייב על הטיפול</span><input id="s_c" type="checkbox"'+(s.charge?" checked":"")+"></label>";
   h+='<div class="two"><div class="f"><label for="s_pr">מחיר (₪)</label><input id="s_pr" type="number" inputmode="numeric" value="'+s.price+'"></div><div class="f"><label for="s_m">אמצעי תשלום</label><select id="s_m">'+["ביט","פייבוקס","מזומן","העברה","אשראי","קופת חולים","צ׳ק"].map(function(x){return"<option"+(s.method===x?" selected":"")+">"+x+"</option>";}).join("")+"</select></div></div>";
+  if(!isNew&&s.series){var futN=S.sessions.filter(function(o){return o.series===s.series&&o.id!==s.id&&o.date>s.date&&o.status==="scheduled";}).length;if(futN)h+='<label class="switch" for="s_all"><span>להחיל שעה, משך, מחיר ויום גם על '+futN+' הטיפולים הבאים בסדרה</span><input id="s_all" type="checkbox"></label>';}
   h+='<label class="switch" for="s_pd"><span>שולם</span><input id="s_pd" type="checkbox"'+(s.paid?" checked":"")+"></label>";
   h+='<div class="f"><label for="s_n">סיכום טיפול / הערה</label><textarea id="s_n" placeholder="מה עבדנו היום, התקדמות, משימה לבית">'+esc(s.note||"")+"</textarea></div>";
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button>'+(!isNew&&s.paid&&billable(s)?'<button class="btn ghost" type="button" id="s_pc">אישור תשלום</button>':"")+(!isNew?'<button class="btn ghost" type="button" id="s_rem">תזכורת</button><button class="btn danger" type="button" id="s_del">מחיקה</button>':'<button class="btn ghost" type="button" id="s_x">סגירה</button>')+"</div></form>";
@@ -388,7 +389,13 @@ function sessionForm(s,isNew,preset){
         var n=rep&&rep.checked?Math.min(52,Math.max(2,+val(r,"s_rn")||12)):1,series=n>1?uid():null;
         for(var i=0;i<n;i++){var c=Object.assign({},o,{id:uid()+i,date:addDays(o.date,i*7),series:series});if(i>0){c.status="scheduled";c.paid=false;c.note="";c.charge=false;}S.sessions.push(c);}
         toast(n>1?n+" טיפולים נקבעו":"הטיפול נקבע");
-      }else{Object.assign(s,o);toast("נשמר");}
+      }else{
+        var allEl=r.querySelector("#s_all"),oldDate=s.date,cnt=0;
+        if(allEl&&allEl.checked){
+          var shift=Math.round((pd(o.date)-pd(oldDate))/864e5);
+          S.sessions.forEach(function(x){if(x.series===s.series&&x.id!==s.id&&x.date>oldDate&&x.status==="scheduled"){x.time=o.time;x.dur=o.dur;x.price=o.price;x.pid=o.pid;if(shift)x.date=addDays(x.date,shift);cnt++;}});
+        }
+        Object.assign(s,o);toast(cnt?"נשמר, עודכנו עוד "+cnt+" טיפולים":"נשמר");}
       UI.sel=o.date;save();closeSheet();render();});
   });
 }
@@ -423,7 +430,10 @@ function patientForm(p){
       var o={name:val(r,"p_n").trim(),birth:val(r,"p_b"),school:val(r,"p_sc").trim(),parent:val(r,"p_pa").trim(),phone:val(r,"p_ph").trim(),type:val(r,"p_t").trim(),payer:val(r,"p_py"),price:+val(r,"p_pr")||0,goals:val(r,"p_g").trim(),status:st};
       if(!o.name){toast("חסר שם");return;}
       if(isNew){o.id=uid();o.color=COLORS[S.patients.length%COLORS.length];o.notes=[];o.created=Date.now();var fn=val(r,"p_fn").trim();if(fn)o.notes.push({id:uid(),date:today(),text:fn});S.patients.push(o);UI.tab="kids";UI.pid=o.id;toast("המטופל נוסף");}
-      else{Object.assign(p,o);toast("נשמר");}
+      else{
+        var oldPrice=+p.price||0,pc=0;
+        if(o.price!==oldPrice){S.sessions.forEach(function(x){if(x.pid===p.id&&!x.paid&&(+x.price||0)===oldPrice&&x.status!=="cancel"){x.price=o.price;pc++;}});}
+        Object.assign(p,o);toast(pc?"נשמר. המחיר עודכן ב-"+pc+" טיפולים שלא שולמו":"נשמר");}
       save();closeSheet();render();});
   });
 }
@@ -498,13 +508,25 @@ function settings(){
   h+='<label class="switch" for="g_c"><span>לחייב כברירת מחדל כשילד לא מגיע</span><input id="g_c" type="checkbox"'+(st.chargeNoShow?" checked":"")+"></label>";
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
-  h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
+  h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
   h+='<section><h2>נתונים</h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
       var a=Math.max(0,Math.min(23,+val(r,"g_s"))),b=Math.max(a+1,Math.min(24,+val(r,"g_e")));st.dayStart=a;st.dayEnd=b;st.chargeNoShow=r.querySelector("#g_c").checked;
       save();closeSheet();render();toast("ההגדרות נשמרו");});
+    r.querySelector("#impf").addEventListener("change",function(){var f=this.files[0];if(!f)return;var fr=new FileReader();fr.onload=function(){
+      var data;try{data=JSON.parse(fr.result);}catch(e){r.querySelector("#rs").innerHTML='<div class="warnbox" style="margin-top:10px">הקובץ לא נקרא.</div>';return;}
+      if(!data||!Array.isArray(data.patients)||!Array.isArray(data.sessions)){r.querySelector("#rs").innerHTML='<div class="warnbox" style="margin-top:10px">זה לא קובץ ייבוא של האפליקציה.</div>';return;}
+      var norm=function(n){return String(n||"").replace(/\s+/g," ").trim();};
+      var byName={};S.patients.forEach(function(p){byName[norm(p.name)]=p;});
+      var map={},newP=0,newS=0,skip=0,keys={};
+      S.sessions.forEach(function(x){keys[x.pid+"|"+x.date+"|"+x.time]=1;});
+      data.patients.forEach(function(p){var ex=byName[norm(p.name)];if(ex){map[p.id]=ex.id;}else{var c=Object.assign({},p);c.id=uid();c.color=c.color||COLORS[S.patients.length%COLORS.length];c.notes=c.notes||[];S.patients.push(c);byName[norm(c.name)]=c;map[p.id]=c.id;newP++;}});
+      var exDates={};S.sessions.forEach(function(x){exDates[x.pid+"|"+x.date]=1;});
+      data.sessions.forEach(function(x){var pid=map[x.pid];if(!pid)return;if(keys[pid+"|"+x.date+"|"+x.time]||(x.status==="scheduled"&&exDates[pid+"|"+x.date])){skip++;return;}var c=Object.assign({},x);c.id=uid();c.pid=pid;S.sessions.push(c);keys[pid+"|"+c.date+"|"+c.time]=1;newS++;});
+      save();closeSheet();render();toast("נוספו "+newP+" מטופלים ו-"+newS+" טיפולים"+(skip?" ("+skip+" כפולים דולגו)":""));
+    };fr.readAsText(f);});
     r.querySelector("#restore").addEventListener("change",function(){var f=this.files[0];if(!f)return;var fr=new FileReader();fr.onload=function(){
       var data;try{data=JSON.parse(fr.result);}catch(e){r.querySelector("#rs").innerHTML='<div class="warnbox" style="margin-top:10px">הקובץ לא נקרא. בחרי קובץ גיבוי שנשמר מהאפליקציה.</div>';return;}
       if(!data||!Array.isArray(data.patients)||!Array.isArray(data.sessions)){r.querySelector("#rs").innerHTML='<div class="warnbox" style="margin-top:10px">זה לא קובץ גיבוי של האפליקציה.</div>';return;}

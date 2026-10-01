@@ -1,6 +1,6 @@
 /* App-shell cache so the app opens offline. Only same-origin files; never caches Supabase traffic. */
-var CACHE="chen-clinic-v3";
-var SHELL=["./","index.html","app.css?v=3","app.js?v=3","sync.js?v=3","config.js?v=3","supabase.js","register-sw.js","manifest.webmanifest","icon-192.png","apple-touch-icon.png"];
+var CACHE="chen-clinic-v5";
+var SHELL=["./","index.html","app.css?v=5","app.js?v=5","sync.js?v=5","config.js?v=5","supabase.js","register-sw.js","manifest.webmanifest","icon-192.png","apple-touch-icon.png"];
 self.addEventListener("install",function(e){e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(SHELL);}).then(function(){return self.skipWaiting();}));});
 self.addEventListener("activate",function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==CACHE;}).map(function(k){return caches.delete(k);}));}).then(function(){return self.clients.claim();}));});
 self.addEventListener("fetch",function(e){
