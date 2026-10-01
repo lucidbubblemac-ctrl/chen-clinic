@@ -57,7 +57,7 @@ function monthName(m){var a=m.split("-");return MONTHS[+a[1]-1]+" "+a[0];}
 function today(){return ymd(new Date());}
 function nowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
 var COLORS=["#23675A","#D0703C","#4A6FB5","#B5487A","#7A62C4","#3C8FA8","#9A7B1E","#5E8A3A"];
-function pc(p){return (S.settings.oneColor!==false)?"#23675A":(p&&p.color)||"#999";}
+function pc(p){return (S.settings.oneColor!==false)?"#17864F":(p&&p.color)||"#999";}
 function P(id){for(var i=0;i<S.patients.length;i++)if(S.patients[i].id===id)return S.patients[i];return null;}
 function SS(id){for(var i=0;i<S.sessions.length;i++)if(S.sessions[i].id===id)return S.sessions[i];return null;}
 function initials(n){n=(n||"?").trim();var p=n.split(/\s+/);return(p[0][0]||"")+(p[1]?p[1][0]:"");}
@@ -510,7 +510,7 @@ function settings(){
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
   h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
-  h+='<section><h2>נתונים</h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
+  h+='<section><h2>נתונים <small>גרסה 9</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
@@ -612,6 +612,68 @@ function exportEmployer(){
 }
 
 /* ---------- events ---------- */
+/* ---------- drag to move (day + week views) ---------- */
+var drag=null,suppressClick=false;
+function dragTarget(x,y){var el=document.elementFromPoint(x,y);return el&&el.closest('.timeline,.wkcol');}
+document.addEventListener("pointerdown",function(e){
+  var ev=e.target.closest(".ev,.wev");if(!ev||e.button>0)return;
+  var r=ev.getBoundingClientRect();
+  drag={el:ev,id:ev.dataset.id,x0:e.clientX,y0:e.clientY,offY:e.clientY-r.top,active:false,touch:e.pointerType!=="mouse",ghost:null,timer:null};
+  if(drag.touch)drag.timer=setTimeout(function(){if(drag&&!drag.active)startDrag(e.clientX,e.clientY);},350);
+});
+function startDrag(x,y){
+  if(!drag)return;drag.active=true;
+  var r=drag.el.getBoundingClientRect(),g=drag.el.cloneNode(true);
+  g.className+=" ghost";g.style.cssText="position:fixed;left:"+r.left+"px;top:"+r.top+"px;width:"+r.width+"px;height:"+r.height+"px;z-index:90;opacity:.9;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25);"+(drag.el.className.indexOf("wev")>-1?"background:"+drag.el.style.background:"");
+  document.body.appendChild(g);drag.ghost=g;drag.el.style.opacity=".3";
+  if(navigator.vibrate)try{navigator.vibrate(15);}catch(x){}
+}
+document.addEventListener("pointermove",function(e){
+  if(!drag)return;
+  var dx=e.clientX-drag.x0,dy=e.clientY-drag.y0;
+  if(!drag.active){
+    if(drag.touch){if(Math.abs(dx)>10||Math.abs(dy)>10){clearTimeout(drag.timer);drag=null;}return;}
+    if(Math.abs(dx)+Math.abs(dy)>6)startDrag(e.clientX,e.clientY);else return;
+  }
+  var r=drag.el.getBoundingClientRect();
+  drag.ghost.style.left=(r.left+dx)+"px";drag.ghost.style.top=(r.top+dy)+"px";
+  document.querySelectorAll(".droptarget").forEach(function(x){x.classList.remove("droptarget");});
+  var t=dragTarget(e.clientX,e.clientY);if(t)t.classList.add("droptarget");
+});
+document.addEventListener("touchmove",function(e){if(drag&&drag.active)e.preventDefault();},{passive:false});
+function endDrag(e,cancel){
+  if(!drag)return;clearTimeout(drag.timer);
+  var d=drag;drag=null;
+  if(!d.active)return;
+  suppressClick=true;setTimeout(function(){suppressClick=false;},400);
+  if(d.ghost)d.ghost.remove();d.el.style.opacity="";
+  document.querySelectorAll(".droptarget").forEach(function(x){x.classList.remove("droptarget");});
+  if(cancel)return;
+  var t=dragTarget(e.clientX,e.clientY),s=SS(d.id);if(!t||!s)return;
+  var rect=t.getBoundingClientRect(),hh=+(t.dataset.hh||64),st=+t.dataset.start;
+  var m=st*60+Math.round(((e.clientY-d.offY)-rect.top)/hh*60/15)*15;m=Math.max(0,Math.min(23*60+45,m));
+  moveSession(s,t.dataset.date,fromMin(m));
+}
+document.addEventListener("pointerup",function(e){endDrag(e,false);});
+document.addEventListener("pointercancel",function(e){endDrag(e,true);});
+document.addEventListener("click",function(e){if(suppressClick){e.stopPropagation();e.preventDefault();suppressClick=false;}},true);
+function moveSession(s,date,time){
+  if(s.date===date&&s.time===time)return;
+  var fut=s.series?S.sessions.filter(function(o){return o.series===s.series&&o.id!==s.id&&o.date>s.date&&o.status==="scheduled";}):[];
+  var p=P(s.pid)||{name:""};
+  function apply(all){
+    var shift=Math.round((pd(date)-pd(s.date))/864e5);
+    if(all)fut.forEach(function(o){o.date=addDays(o.date,shift);o.time=time;});
+    s.date=date;s.time=time;save();closeSheet();render();
+    toast(all?"הועברו "+(fut.length+1)+" טיפולים":"הטיפול הועבר ל"+niceDate(date)+" "+time);
+  }
+  if(!fut.length){apply(false);return;}
+  sheet('<h3>העברת '+esc(p.name)+'</h3><p style="color:var(--ink-2);margin:0 0 12px">ל'+niceDate(date)+' בשעה '+time+'</p><div class="list"><button class="btn block" type="button" id="mv1">רק את הטיפול הזה</button><button class="btn block ghost" type="button" id="mvall">גם את כל '+fut.length+' הטיפולים הבאים</button><button class="btn block ghost" type="button" id="mvx">ביטול</button></div>',function(r){
+    r.querySelector("#mv1").onclick=function(){apply(false);};
+    r.querySelector("#mvall").onclick=function(){apply(true);};
+    r.querySelector("#mvx").onclick=closeSheet;
+  });
+}
 document.addEventListener("click",function(e){
   var a=e.target.closest("[data-act]");if(!a)return;
   var act=a.dataset.act,id=a.dataset.id,v=a.dataset.v;
@@ -665,7 +727,7 @@ document.addEventListener("visibilitychange",function(){if(document.hidden&&S.se
 
 /* one-time data fixes (names matched by hash, never stored in code) */
 function nh(s){s=String(s||"").replace(/\s+/g," ").trim();var x=5381;for(var i=0;i<s.length;i++){x=((x<<5)+x+s.charCodeAt(i))|0;}return x;}
-function fixups(){var a=fix1(),b=fix3();return a||b;}
+function fixups(){var a=fix1(),b=fix4();return a||b;}
 function fix1(){
   if(S.settings.fix1)return false;
   var t=S.patients.filter(function(p){return nh(p.name)===1436732829;})[0];
@@ -714,6 +776,22 @@ function fix3(){
     if(old>="2026-10-01"&&x.date<"2026-10-01"&&x.status==="scheduled")x.status="done";
   });
   S.settings.fix3=true;S.settings.fix2=true;
+  return true;
+}
+/* fix4: same final schedule as fix3, matching kids by any word of their name (works even if Chen edited names) */
+function fix4(){
+  if(S.settings.fix4)return false;
+  var TOK={"5910615":4,"195048436":4,"195056792":2,"355362152":3,"369411281":2,"517970199":2,"962705990":3,"1954011920":3,"1954820258":3,"1959124774":4,"1968502631":2,"1970560973":4,"1970886275":4,"1974289565":4,"2141838905":2,"2142060335":2,"2142199929":3,"2142275666":2,"2142451688":2,"2142481788":4,"2142503165":3,"-596376394":3};
+  var tgt={};S.patients.forEach(function(p){var parts=String(p.name||"").split(/\s+/);for(var i=0;i<parts.length;i++){var w=TOK[nh(parts[i])];if(w){tgt[p.id]=w;break;}}});
+  if(!Object.keys(tgt).length)return false;
+  S.sessions.forEach(function(x){
+    var tw=tgt[x.pid];if(!tw||x.date<"2026-09-01")return;
+    var wd=pd(x.date).getDay();if(wd<1||wd>4||wd===tw)return;
+    var old=x.date;x.date=addDays(x.date,tw-wd);
+    if(x.date<"2026-09-01"){x.date=old;return;}
+    if(old<"2026-10-01"&&x.date>="2026-10-01"&&x.status==="done"&&!x.paid)x.status="scheduled";
+  });
+  S.settings.fix4=true;S.settings.fix3=true;S.settings.fix2=true;
   return true;
 }
 window.__app={
