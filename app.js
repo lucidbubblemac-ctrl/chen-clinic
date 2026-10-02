@@ -59,7 +59,16 @@ function nowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
 var COLORS=["#23675A","#D0703C","#4A6FB5","#B5487A","#7A62C4","#3C8FA8","#9A7B1E","#5E8A3A"];
 function sc(s){return {done:"#17864F",noshow:"#D93025",cancel:"#9AA0A6"}[s&&s.status]||"#F08C00";}
 function pc(p){return (S.settings.oneColor!==false)?"#17864F":(p&&p.color)||"#999";}
-function futureOf(s){var wd=pd(s.date).getDay();return S.sessions.filter(function(o){return o.id!==s.id&&o.pid===s.pid&&o.date>s.date&&o.status==="scheduled"&&((s.series&&o.series===s.series)||(pd(o.date).getDay()===wd&&o.time===s.time));});}
+function nmKey(x){return String(x||"").replace(/[\s"'׳״\-]/g,"");}
+function futureOf(s){
+  var p0=P(s.pid),k=p0?nmKey(p0.name):"";
+  var all=S.sessions.filter(function(o){if(o.id===s.id||o.date<=s.date||o.status!=="scheduled")return false;if(o.pid===s.pid)return true;var q=P(o.pid);return !!(k&&q&&nmKey(q.name)===k);});
+  var days={};all.forEach(function(o){days[pd(o.date).getDay()]=1;});
+  if(Object.keys(days).length<=1)return all;
+  var wd=pd(s.date).getDay(),same=all.filter(function(o){return pd(o.date).getDay()===wd;});
+  return same.length?same:all.filter(function(o){return o.time===s.time;});
+}
+function shiftLike(o,fromDate,toDate){var d=pd(fromDate).getDay()-pd(o.date).getDay(),sh=Math.round((pd(toDate)-pd(fromDate))/864e5);return addDays(o.date,d+sh);}
 function P(id){for(var i=0;i<S.patients.length;i++)if(S.patients[i].id===id)return S.patients[i];return null;}
 function SS(id){for(var i=0;i<S.sessions.length;i++)if(S.sessions[i].id===id)return S.sessions[i];return null;}
 function initials(n){n=(n||"?").trim();var p=n.split(/\s+/);return(p[0][0]||"")+(p[1]?p[1][0]:"");}
@@ -401,8 +410,7 @@ function sessionForm(s,isNew,preset){
         var finish=function(all){
           var cnt=0;
           if(all){
-            var shift=Math.round((pd(o.date)-pd(oldDate))/864e5);
-            futList.forEach(function(x){{x.time=o.time;x.dur=o.dur;x.price=o.price;x.pid=o.pid;if(shift)x.date=addDays(x.date,shift);cnt++;}});
+            futList.forEach(function(x){x.date=shiftLike(x,oldDate,o.date);x.time=o.time;x.dur=o.dur;x.price=o.price;x.pid=o.pid;cnt++;});
           }
           Object.assign(s,o);UI.sel=o.date;save();closeSheet();render();toast(cnt?"נשמר, עודכנו עוד "+cnt+" טיפולים":"נשמר");
         };
@@ -531,7 +539,7 @@ function settings(){
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
   h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
-  h+='<section><h2>נתונים <small>גרסה 14</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
+  h+='<section><h2>נתונים <small>גרסה 15</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
@@ -611,23 +619,20 @@ function exportMonth(){
 }
 
 function exportEmployer(){
-  var m=UI.month,emp=S.settings.employer||"";
-  var ss=S.sessions.filter(function(s){var p=P(s.pid);return s.date.slice(0,7)===m&&p&&p.payer==="דרך המעסיק"&&s.status!=="scheduled";}).sort(sortS);
-  if(!ss.length){toast("אין החודש טיפולים של מטופלים דרך המעסיק");return;}
+  var m=UI.month;
+  var done=S.sessions.filter(function(s){var p=P(s.pid);return s.date.slice(0,7)===m&&p&&p.payer==="דרך המעסיק"&&s.status==="done";}).sort(sortS);
+  if(!done.length){toast("אין החודש טיפולים שבוצעו של מטופלים דרך המעסיק");return;}
   toast("מכינה את הדוח...");
   loadXLSX().then(function(X){
     var wb=X.utils.book_new();wb.Workbook={Views:[{RTL:true}]};
-    var done=ss.filter(function(s){return s.status==="done";});
-    var mins=done.reduce(function(a,s){return a+(+s.dur||0);},0);
-    var billed=ss.filter(billable);var amt=billed.reduce(function(a,s){return a+(+s.price||0);},0);
-    var rows=[["דוח טיפולים חודשי",monthName(m)],["מטפלת",S.settings.name],["מעסיק",emp],[],["תאריך","יום","משעה","עד שעה","דקות","מטופל","סוג טיפול","סטטוס","לחיוב","תעריף (₪)"]];
-    ss.forEach(function(s){var p=P(s.pid)||{};rows.push([s.date.split("-").reverse().join("/"),DAYS[pd(s.date).getDay()],s.time,fromMin(toMin(s.time)+(+s.dur||0)),+s.dur||0,p.name||"",p.type||"",(STATUS[s.status]||STATUS.scheduled)[0],billable(s)?"כן":"לא",billable(s)?+s.price:0]);});
-    rows.push([]);rows.push(["טיפולים שבוצעו",done.length]);rows.push(["שעות טיפול",Math.round(mins/6)/10]);rows.push(["סה״כ לחיוב (₪)",amt]);
-    var ws=X.utils.aoa_to_sheet(rows);ws["!cols"]=[{wch:12},{wch:8},{wch:8},{wch:8},{wch:7},{wch:18},{wch:20},{wch:9},{wch:7},{wch:10}];
-    X.utils.book_append_sheet(wb,ws,"טיפולים");
-    var per={};done.forEach(function(s){var r=per[s.pid]=per[s.pid]||{n:0,min:0};r.n++;r.min+=+s.dur||0;});
-    var pr=[["מטופל","טיפולים","שעות"]];Object.keys(per).forEach(function(k){var p=P(k)||{};pr.push([p.name||"",per[k].n,Math.round(per[k].min/6)/10]);});
-    var ws2=X.utils.aoa_to_sheet(pr);ws2["!cols"]=[{wch:18},{wch:9},{wch:8}];X.utils.book_append_sheet(wb,ws2,"לפי מטופל");
+    var per={},order=[];
+    done.forEach(function(s){var p=P(s.pid)||{},k=nmKey(p.name)||s.pid;if(!per[k]){per[k]={name:p.name||"",parent:p.parent||"",dates:[],sum:0};order.push(k);}var r=per[k];var d=s.date.split("-");r.dates.push(+d[2]+"/"+(+d[1]));r.sum+=+s.price||0;if(!r.parent&&p.parent)r.parent=p.parent;});
+    order.sort(function(x,y){return per[x].name.localeCompare(per[y].name,"he");});
+    var rows=[["דוח למעסיק · "+monthName(m)],[],["שם המטופל","שם ההורה","תאריכי טיפולים","מספר טיפולים","סכום (₪)"]],tn=0,ts=0;
+    order.forEach(function(k){var r=per[k];rows.push([r.name,r.parent,r.dates.join(", "),r.dates.length,r.sum]);tn+=r.dates.length;ts+=r.sum;});
+    rows.push(["סה״כ","","",tn,ts]);
+    var ws=X.utils.aoa_to_sheet(rows);ws["!cols"]=[{wch:20},{wch:16},{wch:40},{wch:12},{wch:11}];
+    X.utils.book_append_sheet(wb,ws,"דוח");
     saveFile("דוח-למעסיק-"+m+".xlsx",new Blob([X.write(wb,{bookType:"xlsx",type:"array"})])).catch(function(){});
   },function(){toast("טעינת רכיב האקסל נכשלה. בדקי חיבור לאינטרנט.");});
 }
@@ -709,8 +714,7 @@ function moveSession(s,date,time){
   var fut=futureOf(s);
   var p=P(s.pid)||{name:""};
   function apply(all){
-    var shift=Math.round((pd(date)-pd(s.date))/864e5);
-    if(all)fut.forEach(function(o){o.date=addDays(o.date,shift);o.time=time;});
+    if(all)fut.forEach(function(o){o.date=shiftLike(o,s.date,date);o.time=time;o.pid=s.pid;});
     s.date=date;s.time=time;save();closeSheet();render();
     toast(all?"הועברו "+(fut.length+1)+" טיפולים":"הטיפול הועבר ל"+niceDate(date)+" "+time);
   }
