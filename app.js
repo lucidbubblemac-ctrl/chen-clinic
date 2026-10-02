@@ -16,13 +16,17 @@ S.settings=Object.assign(blank().settings,S.settings||{});
 S.patients=S.patients||[];S.sessions=S.sessions||[];S.expenses=S.expenses||[];
 S.deleted=S.deleted||{};
 var COLS=["patients","sessions","expenses"];
+var APP_VER=18;
 var H=null;
 function snapKey(o){var c=Object.assign({},o);delete c.u;return JSON.stringify(c);}
 function setKey(st){var c=Object.assign({},st);delete c.pinHash;delete c.lastBackup;return JSON.stringify(c);}
 function initH(){H={settings:setKey(S.settings)};COLS.forEach(function(k){H[k]={};S[k].forEach(function(it){H[k][it.id]=snapKey(it);});});}
 function stamp(){
   if(!H)initH();
-  var now=Date.now(),changed=false;
+  var now=Date.now(),changed=false,maxU=0;
+  COLS.forEach(function(k){S[k].forEach(function(it){if((it.u||0)>maxU)maxU=it.u;});});
+  Object.keys(S.deleted||{}).forEach(function(id){if(S.deleted[id]>maxU)maxU=S.deleted[id];});
+  if(now<=maxU)now=maxU+1;
   COLS.forEach(function(k){
     var seen={};
     S[k].forEach(function(it){seen[it.id]=1;var j=snapKey(it);if(H[k][it.id]!==j){it.u=now;H[k][it.id]=j;changed=true;}});
@@ -167,7 +171,7 @@ function vToday(){
   var debt={};S.sessions.forEach(function(s){if(billable(s)&&!s.paid){debt[s.pid]=(debt[s.pid]||0)+(+s.price||0);}});
   var debtors=Object.keys(debt).map(function(k){return[k,debt[k]];}).sort(function(a,b){return b[1]-a[1];});
   var tom=sessionsOn(addDays(t,1)).filter(function(s){return s.status==="scheduled";});
-  var h=top(greet+", "+esc(S.settings.name),niceDate(t));
+  var h=top(greet+", "+esc(S.settings.name),niceDate(t)+' <span style="color:var(--ink-3);font-size:12px">· גרסה '+APP_VER+"</span>");
   if(!storageOk)h+='<div class="banner bad">הדפדפן חוסם שמירה. נתונים לא יישמרו עד שתאפשרי אחסון אתרים.</div>';
   if(S.demo)h+='<div class="banner"><span>אלה נתוני דוגמה כדי לראות איך זה עובד.</span><button class="mini" data-act="clear-demo">התחילי נקי</button></div>';
   var lb=S.settings.lastBackup;
@@ -350,7 +354,11 @@ function sheet(html,mount){
   if(mount)mount(scrim.querySelector(".sheet"));
 }
 function closeSheet(){if(scrim){scrim.remove();scrim=null;}if(render._pending){render._pending=false;if(window.__authed)render();}}
-function toast(msg){var t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove();},2200);}
+function toast(msg,undo){document.querySelectorAll(".toast").forEach(function(x){x.remove();});var t=document.createElement("div");t.className="toast";t.textContent=msg;
+  if(undo){var b=document.createElement("button");b.type="button";b.className="undo";b.textContent="ביטול";b.onclick=function(){t.remove();undo();};t.appendChild(b);}
+  document.body.appendChild(t);setTimeout(function(){t.remove();},undo?8000:2200);}
+function snapshotSessions(ids){var m={};ids.forEach(function(id){var s=SS(id);if(s)m[id]=JSON.parse(JSON.stringify(s));});return m;}
+function restoreSessions(m){Object.keys(m).forEach(function(id){var s=SS(id);if(s)Object.assign(s,m[id]);else S.sessions.push(m[id]);});save();render();toast("בוטל, הטיפולים חזרו למקום");}
 function confirmIn(root,text,label,fn){
   var box=document.createElement("div");box.className="warnbox";box.innerHTML=esc(text)+'<div class="actions" style="margin-top:8px"><button class="mini bad" type="button">'+esc(label)+'</button><button class="mini" type="button">ביטול</button></div>';
   var old=root.querySelector(".warnbox.cf");if(old)old.remove();box.classList.add("cf");
@@ -391,11 +399,11 @@ function sessionForm(s,isNew,preset){
     var rem=r.querySelector("#s_rem");if(rem)rem.onclick=function(){remind(s.id);};
     var del=r.querySelector("#s_del");if(del)del.onclick=function(){
       var fut=futureOf(s);
-      if(!fut.length){confirmIn(r,"למחוק את הטיפול?","מחיקת הטיפול",function(){S.sessions=S.sessions.filter(function(o){return o.id!==s.id;});save();closeSheet();render();toast("הטיפול נמחק");});return;}
+      if(!fut.length){confirmIn(r,"למחוק את הטיפול?","מחיקת הטיפול",function(){var snap=snapshotSessions([s.id]);S.sessions=S.sessions.filter(function(o){return o.id!==s.id;});save();closeSheet();render();toast("הטיפול נמחק",function(){restoreSessions(snap);});});return;}
       var p0=P(s.pid)||{name:""};
       sheet('<h3>מחיקת טיפול</h3><p style="color:var(--ink-2);margin:0 0 12px">'+esc(p0.name)+' · '+niceDate(s.date)+' '+s.time+'</p><div class="list"><button class="btn block danger" type="button" id="dl1">רק את הטיפול הזה</button><button class="btn block danger" type="button" id="dlall">גם את כל '+fut.length+' הטיפולים הבאים</button><button class="btn block ghost" type="button" id="dlx">ביטול</button></div>',function(r2){
-        r2.querySelector("#dl1").onclick=function(){S.sessions=S.sessions.filter(function(o){return o.id!==s.id;});save();closeSheet();render();toast("הטיפול נמחק");};
-        r2.querySelector("#dlall").onclick=function(){var ids={};ids[s.id]=1;fut.forEach(function(o){ids[o.id]=1;});S.sessions=S.sessions.filter(function(o){return!ids[o.id];});save();closeSheet();render();toast("נמחקו "+(fut.length+1)+" טיפולים");};
+        r2.querySelector("#dl1").onclick=function(){var snap=snapshotSessions([s.id]);S.sessions=S.sessions.filter(function(o){return o.id!==s.id;});save();closeSheet();render();toast("הטיפול נמחק",function(){restoreSessions(snap);});};
+        r2.querySelector("#dlall").onclick=function(){var ids={};ids[s.id]=1;fut.forEach(function(o){ids[o.id]=1;});var snap=snapshotSessions(Object.keys(ids));S.sessions=S.sessions.filter(function(o){return!ids[o.id];});save();closeSheet();render();toast("נמחקו "+(fut.length+1)+" טיפולים",function(){restoreSessions(snap);});};
         r2.querySelector("#dlx").onclick=closeSheet;});
     };
     r.querySelector("#sf").addEventListener("submit",function(e){e.preventDefault();
@@ -409,10 +417,11 @@ function sessionForm(s,isNew,preset){
         var allEl=r.querySelector("#s_all"),oldDate=s.date,futList=futureOf(s);
         var finish=function(all){
           var cnt=0;s=SS(s.id)||s;futList=futList.map(function(x){return SS(x.id);}).filter(Boolean);
+          var snap=snapshotSessions([s.id].concat(all?futList.map(function(x){return x.id;}):[]));
           if(all){
             futList.forEach(function(x){x.date=shiftLike(x,oldDate,o.date);x.time=o.time;x.dur=o.dur;x.price=o.price;x.pid=o.pid;cnt++;});
           }
-          Object.assign(s,o);UI.sel=o.date;save();closeSheet();render();toast(cnt?"נשמר, עודכנו עוד "+cnt+" טיפולים":"נשמר");
+          Object.assign(s,o);UI.sel=o.date;save();closeSheet();render();toast(cnt?"נשמר, עודכנו עוד "+cnt+" טיפולים":"נשמר",function(){restoreSessions(snap);});
         };
         var changedSched=o.date!==s.date||o.time!==s.time||o.dur!==(+s.dur)||o.price!==(+s.price);
         if(allEl&&allEl.checked){finish(true);return;}
@@ -539,7 +548,7 @@ function settings(){
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
   h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
-  h+='<section><h2>נתונים <small>גרסה 17</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
+  h+='<section><h2>נתונים <small>גרסה '+APP_VER+'</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
@@ -708,16 +717,17 @@ document.addEventListener("touchend",function(e){
 },{passive:false});
 document.addEventListener("touchcancel",function(){if(drag&&drag.touch)finishDrag(0,0,true);});
 document.addEventListener("contextmenu",function(e){if(e.target.closest(".ev,.wev"))e.preventDefault();});
-document.addEventListener("click",function(e){if(suppressClick){e.stopPropagation();e.preventDefault();suppressClick=false;}},true);
+document.addEventListener("click",function(e){if(suppressClick&&e.target.closest(".ev,.wev,.timeline,.wkcol,.slot")){e.stopPropagation();e.preventDefault();suppressClick=false;}},true);
 function moveSession(s,date,time){
   if(s.date===date&&s.time===time)return;
   var fut=futureOf(s);
   var p=P(s.pid)||{name:""};
   function apply(all){
     s=SS(s.id)||s;fut=fut.map(function(x){return SS(x.id);}).filter(Boolean);
+    var snap=snapshotSessions([s.id].concat(all?fut.map(function(x){return x.id;}):[]));
     if(all)fut.forEach(function(o){o.date=shiftLike(o,s.date,date);o.time=time;o.pid=s.pid;});
     s.date=date;s.time=time;save();closeSheet();render();
-    toast(all?"הועברו "+(fut.length+1)+" טיפולים":"הטיפול הועבר ל"+niceDate(date)+" "+time);
+    toast(all?"הועברו "+(fut.length+1)+" טיפולים ליום "+DAYS[pd(date).getDay()]+" "+time:"הטיפול הועבר ל"+niceDate(date)+" "+time,function(){restoreSessions(snap);});
   }
   if(!fut.length){apply(false);return;}
   sheet('<h3>העברת '+esc(p.name)+'</h3><p style="color:var(--ink-2);margin:0 0 12px">ל'+niceDate(date)+' בשעה '+time+'</p><div class="list"><button class="btn block" type="button" id="mv1">רק את הטיפול הזה</button><button class="btn block ghost" type="button" id="mvall">גם את כל '+fut.length+' הטיפולים הבאים</button><button class="btn block ghost" type="button" id="mvx">ביטול</button></div>',function(r){
