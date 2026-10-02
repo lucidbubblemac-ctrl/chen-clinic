@@ -381,7 +381,7 @@ function sessionForm(s,isNew,preset){
     function syncCharge(){r.querySelector("#cw").hidden=!(st==="noshow"||st==="cancel");}
     syncCharge();
     r.querySelector("#s_st").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;st=b.dataset.v;r.querySelectorAll("#s_st button").forEach(function(x){x.classList.toggle("on",x===b);});
-      if(st==="noshow"||st==="cancel")r.querySelector("#s_c").checked=false;if(st==="done")r.querySelector("#s_pd").checked=true;syncCharge();});
+      if(st==="noshow"||st==="cancel"){r.querySelector("#s_c").checked=false;r.querySelector("#s_pd").checked=false;}if(st==="done")r.querySelector("#s_pd").checked=true;syncCharge();});
     r.querySelector("#s_p").addEventListener("change",function(){var p=P(this.value);if(p)r.querySelector("#s_pr").value=p.price;});
     function chk(){var tmp={id:s.id,date:val(r,"s_d"),time:val(r,"s_t")||"00:00",dur:+val(r,"s_u")||45};r.querySelector("#clash").innerHTML=(tmp.date&&clashes(tmp))?'<div class="warnbox">שימי לב: יש כבר טיפול בשעה הזו</div>':"";}
     ["s_d","s_t","s_u"].forEach(function(id){r.querySelector("#"+id).addEventListener("input",chk);});chk();
@@ -539,7 +539,7 @@ function settings(){
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
   h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
-  h+='<section><h2>נתונים <small>גרסה 16</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
+  h+='<section><h2>נתונים <small>גרסה 17</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
@@ -744,7 +744,7 @@ document.addEventListener("click",function(e){
       newSession({date:a.dataset.date,time:fromMin(m)});break;
     case"new-session":newSession({pid:a.dataset.pid});break;
     case"edit-session":var s=SS(id);if(s)sessionForm(s,false);break;
-    case"st":var s2=SS(id);if(s2){s2.status=v;if(v==="noshow")s2.charge=false;if(v==="done")s2.paid=true;save();render();toast(v==="done"?"סומן כבוצע":"סומן: לא הגיע");}break;
+    case"st":var s2=SS(id);if(s2){s2.status=v;if(v==="noshow"){s2.charge=false;s2.paid=false;}if(v==="done")s2.paid=true;save();render();toast(v==="done"?"סומן כבוצע":"סומן: לא הגיע");}break;
     case"paid":var s3=SS(id);if(s3){s3.paid=true;save();render();toast("סומן כשולם");}break;
     case"pay-all":S.sessions.forEach(function(s){if(s.pid===id&&billable(s))s.paid=true;});save();render();toast("הכל סומן כשולם");break;
     case"remind":remind(id);break;
@@ -780,11 +780,13 @@ document.addEventListener("visibilitychange",function(){if(document.hidden&&S.se
 /* one-time data fixes (names matched by hash, never stored in code) */
 function nh(s){s=String(s||"").replace(/\s+/g," ").trim();var x=5381;for(var i=0;i<s.length;i++){x=((x<<5)+x+s.charCodeAt(i))|0;}return x;}
 function fixups(){
-  var K="chen-fix13";try{if(localStorage.getItem(K))return false;}catch(x){return false;}
   if(!S.sessions.length)return false;
-  var t=today(),ch=false;
-  S.sessions.forEach(function(s){if(s.date<=t){if(s.status==="done"&&!s.paid){s.paid=true;ch=true;}if(s.status==="noshow"&&s.charge){s.charge=false;ch=true;}}});
-  try{localStorage.setItem(K,"1");}catch(x){}
+  var t=today(),ch=false,f13,f17;
+  try{f13=localStorage.getItem("chen-fix13");f17=localStorage.getItem("chen-fix17");}catch(x){return false;}
+  S.sessions.forEach(function(s){if(s.date>t)return;
+    if(!f13&&s.status==="done"&&!s.paid){s.paid=true;ch=true;}
+    if(!f17&&s.status==="noshow"&&(s.charge||s.paid)){s.charge=false;s.paid=false;ch=true;}});
+  try{localStorage.setItem("chen-fix13","1");localStorage.setItem("chen-fix17","1");}catch(x){}
   return ch;
 }
 function fix1(){
