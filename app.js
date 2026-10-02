@@ -408,7 +408,7 @@ function sessionForm(s,isNew,preset){
       }else{
         var allEl=r.querySelector("#s_all"),oldDate=s.date,futList=futureOf(s);
         var finish=function(all){
-          var cnt=0;
+          var cnt=0;s=SS(s.id)||s;futList=futList.map(function(x){return SS(x.id);}).filter(Boolean);
           if(all){
             futList.forEach(function(x){x.date=shiftLike(x,oldDate,o.date);x.time=o.time;x.dur=o.dur;x.price=o.price;x.pid=o.pid;cnt++;});
           }
@@ -461,7 +461,7 @@ function patientForm(p){
       if(!o.name){toast("חסר שם");return;}
       if(isNew){o.id=uid();o.color=COLORS[S.patients.length%COLORS.length];o.notes=[];o.created=Date.now();var fn=val(r,"p_fn").trim();if(fn)o.notes.push({id:uid(),date:today(),text:fn});S.patients.push(o);UI.tab="kids";UI.pid=o.id;toast("המטופל נוסף");}
       else{
-        var oldPrice=+p.price||0,pc=0;
+        p=P(p.id)||p;var oldPrice=+p.price||0,pc=0;
         if(o.price!==oldPrice){S.sessions.forEach(function(x){if(x.pid===p.id&&!x.paid&&(+x.price||0)===oldPrice&&x.status!=="cancel"){x.price=o.price;pc++;}});}
         Object.assign(p,o);toast(pc?"נשמר. המחיר עודכן ב-"+pc+" טיפולים שלא שולמו":"נשמר");}
       save();closeSheet();render();});
@@ -539,7 +539,7 @@ function settings(){
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
   h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
-  h+='<section><h2>נתונים <small>גרסה 15</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
+  h+='<section><h2>נתונים <small>גרסה 16</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
@@ -714,6 +714,7 @@ function moveSession(s,date,time){
   var fut=futureOf(s);
   var p=P(s.pid)||{name:""};
   function apply(all){
+    s=SS(s.id)||s;fut=fut.map(function(x){return SS(x.id);}).filter(Boolean);
     if(all)fut.forEach(function(o){o.date=shiftLike(o,s.date,date);o.time=time;o.pid=s.pid;});
     s.date=date;s.time=time;save();closeSheet();render();
     toast(all?"הועברו "+(fut.length+1)+" טיפולים":"הטיפול הועבר ל"+niceDate(date)+" "+time);
