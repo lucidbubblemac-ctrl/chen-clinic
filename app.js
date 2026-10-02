@@ -16,7 +16,7 @@ S.settings=Object.assign(blank().settings,S.settings||{});
 S.patients=S.patients||[];S.sessions=S.sessions||[];S.expenses=S.expenses||[];
 S.deleted=S.deleted||{};
 var COLS=["patients","sessions","expenses"];
-var APP_VER=18;
+var APP_VER=19;
 var H=null;
 function snapKey(o){var c=Object.assign({},o);delete c.u;return JSON.stringify(c);}
 function setKey(st){var c=Object.assign({},st);delete c.pinHash;delete c.lastBackup;return JSON.stringify(c);}
@@ -29,7 +29,9 @@ function stamp(){
   if(now<=maxU)now=maxU+1;
   COLS.forEach(function(k){
     var seen={};
-    S[k].forEach(function(it){seen[it.id]=1;var j=snapKey(it);if(H[k][it.id]!==j){it.u=now;H[k][it.id]=j;changed=true;}});
+    S[k].forEach(function(it){seen[it.id]=1;
+      if(k==="sessions"&&H[k][it.id]){var oldSt=(H[k][it.id].match(/"status":"(\w+)"/)||[])[1];if(oldSt&&oldSt!==it.status){if(it.status==="done")it.paid=true;else if(it.status==="noshow"||it.status==="cancel")it.paid=false;}}
+      var j=snapKey(it);if(H[k][it.id]!==j){it.u=now;H[k][it.id]=j;changed=true;}});
     Object.keys(H[k]).forEach(function(id){if(!seen[id]){S.deleted[id]=now;delete H[k][id];changed=true;}});
   });
   var sk=setKey(S.settings);if(H.settings!==sk){S.settingsU=now;H.settings=sk;changed=true;}
@@ -629,13 +631,13 @@ function exportMonth(){
 
 function exportEmployer(){
   var m=UI.month;
-  var done=S.sessions.filter(function(s){var p=P(s.pid);return s.date.slice(0,7)===m&&p&&p.payer==="דרך המעסיק"&&s.status==="done";}).sort(sortS);
-  if(!done.length){toast("אין החודש טיפולים שבוצעו של מטופלים דרך המעסיק");return;}
+  var done=S.sessions.filter(function(s){return s.date.slice(0,7)===m&&P(s.pid)&&billable(s);}).sort(sortS);
+  if(!done.length){toast("אין החודש טיפולים לחיוב");return;}
   toast("מכינה את הדוח...");
   loadXLSX().then(function(X){
     var wb=X.utils.book_new();wb.Workbook={Views:[{RTL:true}]};
     var per={},order=[];
-    done.forEach(function(s){var p=P(s.pid)||{},k=nmKey(p.name)||s.pid;if(!per[k]){per[k]={name:p.name||"",parent:p.parent||"",dates:[],sum:0};order.push(k);}var r=per[k];var d=s.date.split("-");r.dates.push(+d[2]+"/"+(+d[1]));r.sum+=+s.price||0;if(!r.parent&&p.parent)r.parent=p.parent;});
+    done.forEach(function(s){var p=P(s.pid)||{},k=nmKey(p.name)||s.pid;if(!per[k]){per[k]={name:p.name||"",parent:p.parent||"",dates:[],sum:0};order.push(k);}var r=per[k];var d=s.date.split("-");r.dates.push(+d[2]+"/"+(+d[1])+(s.status==="done"?"":" (לא הגיע)"));r.sum+=+s.price||0;if(!r.parent&&p.parent)r.parent=p.parent;});
     order.sort(function(x,y){return per[x].name.localeCompare(per[y].name,"he");});
     var rows=[["דוח למעסיק · "+monthName(m)],[],["שם המטופל","שם ההורה","תאריכי טיפולים","מספר טיפולים","סכום (₪)"]],tn=0,ts=0;
     order.forEach(function(k){var r=per[k];rows.push([r.name,r.parent,r.dates.join(", "),r.dates.length,r.sum]);tn+=r.dates.length;ts+=r.sum;});
