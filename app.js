@@ -7,7 +7,7 @@ document.documentElement.dir="rtl";
 /* ---------- storage ---------- */
 var KEY="chen-clinic-v2";
 var storageOk=true;
-function blank(){return{v:1,settings:{name:"חן",price:300,dur:45,dayStart:8,dayEnd:20,chargeNoShow:true,employer:"",pinHash:"",lastBackup:0},patients:[],sessions:[],expenses:[],demo:false};}
+function blank(){return{v:1,settings:{name:"חן",price:300,dur:45,dayStart:8,dayEnd:20,chargeNoShow:false,employer:"",pinHash:"",lastBackup:0},patients:[],sessions:[],expenses:[],demo:false};}
 var S;
 try{var raw=localStorage.getItem(KEY);S=raw?JSON.parse(raw):null;}catch(e){storageOk=false;S=null;}
 var firstRun=!S;
@@ -57,6 +57,7 @@ function monthName(m){var a=m.split("-");return MONTHS[+a[1]-1]+" "+a[0];}
 function today(){return ymd(new Date());}
 function nowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
 var COLORS=["#23675A","#D0703C","#4A6FB5","#B5487A","#7A62C4","#3C8FA8","#9A7B1E","#5E8A3A"];
+function sc(s){return {done:"#17864F",noshow:"#D93025",cancel:"#9AA0A6"}[s&&s.status]||"#F08C00";}
 function pc(p){return (S.settings.oneColor!==false)?"#17864F":(p&&p.color)||"#999";}
 function futureOf(s){var wd=pd(s.date).getDay();return S.sessions.filter(function(o){return o.id!==s.id&&o.pid===s.pid&&o.date>s.date&&o.status==="scheduled"&&((s.series&&o.series===s.series)||(pd(o.date).getDay()===wd&&o.time===s.time));});}
 function P(id){for(var i=0;i<S.patients.length;i++)if(S.patients[i].id===id)return S.patients[i];return null;}
@@ -143,7 +144,7 @@ function sRow(s,opts){
   var acts="";
   if(opts.quick&&s.status==="scheduled")acts='<div class="actions"><span class="mini ok" data-act="st" data-id="'+s.id+'" data-v="done">בוצע ✓</span></div>';
   else if(opts.quick&&billable(s)&&!s.paid)acts='<div class="actions"><span class="mini acc" data-act="paid" data-id="'+s.id+'">סמני שולם</span></div>';
-  return'<button class="row" data-act="edit-session" data-id="'+s.id+'"><div class="time num">'+s.time+(opts.date?"<small>"+shortDate(s.date)+"</small>":"<small>"+s.dur+" דק׳</small>")+'</div><span class="dot" style="background:'+pc(p)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+statusPill(s)+" "+payPill(s)+(s.note?" · "+esc(s.note):"")+"</div></div>"+acts+"</button>";
+  return'<button class="row" data-act="edit-session" data-id="'+s.id+'"><div class="time num">'+s.time+(opts.date?"<small>"+shortDate(s.date)+"</small>":"<small>"+s.dur+" דק׳</small>")+'</div><span class="dot" style="background:'+sc(s)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+statusPill(s)+" "+payPill(s)+(s.note?" · "+esc(s.note):"")+"</div></div>"+acts+"</button>";
 }
 
 function vToday(){
@@ -166,8 +167,8 @@ function vToday(){
   h+='<section><h2>הלו״ז של היום <small class="num">'+money(list.filter(function(s){return s.status!=="cancel";}).reduce(function(a,s){return a+(+s.price||0);},0))+"</small></h2>";
   h+=list.length?'<div class="list">'+list.map(function(s){return sRow(s,{quick:true});}).join("")+"</div>":'<div class="empty">אין טיפולים היום. <button class="link" data-act="new-session">קביעת טיפול</button></div>';
   h+="</section>";
-  if(stale.length){h+='<section><h2>לעדכן סטטוס <small>'+stale.length+" טיפולים שעברו</small></h2><div class=\"list\">"+stale.slice(0,6).map(function(s){var p=P(s.pid)||{name:"",color:"#999"};return'<div class="row"><div class="time num">'+s.time+"<small>"+shortDate(s.date)+'</small></div><span class="dot" style="background:'+pc(p)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div></div><div class="actions"><button class="mini ok" data-act="st" data-id="'+s.id+'" data-v="done">בוצע</button><button class="mini bad" data-act="st" data-id="'+s.id+'" data-v="noshow">לא הגיע</button></div></div>';}).join("")+"</div></section>";}
-  if(tom.length){h+='<section><h2>מחר <small>תזכורות להורים</small></h2><div class="list">'+tom.map(function(s){var p=P(s.pid)||{name:"",color:"#999"};return'<div class="row"><div class="time num">'+s.time+'</div><span class="dot" style="background:'+pc(p)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+esc(p.parent||"")+'</div></div><button class="mini" data-act="remind" data-id="'+s.id+'">תזכורת</button></div>';}).join("")+"</div></section>";}
+  if(stale.length){h+='<section><h2>לעדכן סטטוס <small>'+stale.length+" טיפולים שעברו</small></h2><div class=\"list\">"+stale.slice(0,6).map(function(s){var p=P(s.pid)||{name:"",color:"#999"};return'<div class="row"><div class="time num">'+s.time+"<small>"+shortDate(s.date)+'</small></div><span class="dot" style="background:'+sc(s)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div></div><div class="actions"><button class="mini ok" data-act="st" data-id="'+s.id+'" data-v="done">בוצע</button><button class="mini bad" data-act="st" data-id="'+s.id+'" data-v="noshow">לא הגיע</button></div></div>';}).join("")+"</div></section>";}
+  if(tom.length){h+='<section><h2>מחר <small>תזכורות להורים</small></h2><div class="list">'+tom.map(function(s){var p=P(s.pid)||{name:"",color:"#999"};return'<div class="row"><div class="time num">'+s.time+'</div><span class="dot" style="background:'+sc(s)+'"></span><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+esc(p.parent||"")+'</div></div><button class="mini" data-act="remind" data-id="'+s.id+'">תזכורת</button></div>';}).join("")+"</div></section>";}
   if(debtors.length){h+='<section><h2>חובות פתוחים <small class="num">'+money(owed())+'</small></h2><div class="list">'+debtors.slice(0,5).map(function(x){var p=P(x[0])||{name:"(נמחק)",color:"#999"};return'<button class="row" data-act="open-patient" data-id="'+x[0]+'"><div class="av" style="background:'+pc(p)+'">'+esc(initials(p.name))+'</div><div class="grow"><div class="t">'+esc(p.name)+'</div><div class="m">'+esc(p.payer||"")+'</div></div><span class="pill p-owe num">'+money(x[1])+"</span></button>";}).join("")+"</div></section>";}
   return h;
 }
@@ -193,8 +194,8 @@ function vCalWeek(){
   for(i=0;i<7;i++){var d2=addDays(ws,i);
     h+='<div class="wkcol'+(d2===t?" today":"")+'" data-act="slot" data-date="'+d2+'" data-start="'+st+'" data-hh="'+HH+'">';
     sessionsOn(d2).forEach(function(s){var p=P(s.pid)||{name:"?",color:"#999"};var tp=(toMin(s.time)-st*60)/60*HH,ht=Math.max(22,(+s.dur)/60*HH-2);
-      var cls=s.status==="done"?" done":s.status==="cancel"?" cancel":s.status==="noshow"?" noshow":"";
-      h+='<button class="wev'+cls+'" data-act="edit-session" data-id="'+s.id+'" style="top:'+(tp+1)+"px;height:"+ht+"px;background:"+pc(p)+'"><span class="num">'+s.time+"</span>"+esc((p.name||"").split(" ")[0])+"</button>";});
+      var cls=s.status==="done"?" done":s.status==="cancel"?" cancel":s.status==="noshow"?" noshow":" sched";
+      h+='<button class="wev'+cls+'" data-act="edit-session" data-id="'+s.id+'" style="top:'+(tp+1)+"px;height:"+ht+"px;background:"+sc(s)+'"><span class="num">'+s.time+"</span>"+esc((p.name||"").split(" ")[0])+"</button>";});
     if(d2===t){var nm=nowMin();if(nm>=st*60&&nm<=en*60)h+='<div class="wknow" style="top:'+((nm-st*60)/60*HH)+'px"></div>';}
     h+="</div>";}
   h+="</div></div>";
@@ -210,7 +211,7 @@ function vCalMonth(){
   var weeks=Math.ceil((pd(first).getDay()+new Date(+m.slice(0,4),+m.slice(5,7),0).getDate())/7);
   for(var i=0;i<weeks*7;i++){var dd=addDays(start,i),list=sessionsOn(dd).filter(function(s){return s.status!=="cancel";});
     var out=dd.slice(0,7)!==m;
-    h+='<button class="mday'+(out?" out":"")+(dd===t?" today":"")+'" data-act="day-open" data-v="'+dd+'"><b class="num">'+pd(dd).getDate()+'</b><span class="mdots">'+list.slice(0,4).map(function(s){var p=P(s.pid)||{color:"#999"};return'<i style="background:'+pc(p)+'"></i>';}).join("")+"</span>"+(list.length?'<small class="num">'+list.length+"</small>":"")+"</button>";}
+    h+='<button class="mday'+(out?" out":"")+(dd===t?" today":"")+'" data-act="day-open" data-v="'+dd+'"><b class="num">'+pd(dd).getDate()+'</b><span class="mdots">'+list.slice(0,4).map(function(s){var p=P(s.pid)||{color:"#999"};return'<i style="background:'+sc(s)+'"></i>';}).join("")+"</span>"+(list.length?'<small class="num">'+list.length+"</small>":"")+"</button>";}
   h+="</div></div>";
   var byPat={};inMonth.forEach(function(s){if(s.status!=="cancel")byPat[s.pid]=(byPat[s.pid]||0)+1;});
   var ks=Object.keys(byPat).sort(function(a,b){return byPat[b]-byPat[a];});
@@ -235,9 +236,9 @@ function vCal(){
   h+='<div class="timeline" data-act="slot" data-date="'+sel+'" data-start="'+st+'" style="height:'+(en-st)*HH+'px">';
   for(var hh=st;hh<en;hh++)h+='<div class="hr"><span class="num">'+pad(hh)+":00</span></div>";
   list.forEach(function(s){var p=P(s.pid)||{name:"(נמחק)",color:"#999"};var top_=(toMin(s.time)-st*60)/60*HH,ht=Math.max(30,(+s.dur)/60*HH-3);
-    var cls=s.status==="done"?" done":s.status==="cancel"?" cancel":s.status==="noshow"?" noshow":"";
+    var cls=s.status==="done"?" done":s.status==="cancel"?" cancel":s.status==="noshow"?" noshow":" sched";
     if(s.status!=="cancel"&&clashes(s))cls+=" clash";
-    h+='<button class="ev'+cls+'" data-act="edit-session" data-id="'+s.id+'" style="top:'+(top_+1)+"px;height:"+ht+"px;border-inline-start-color:"+pc(p)+'"><b>'+esc(p.name)+'</b><span class="num">'+s.time+"-"+fromMin(toMin(s.time)+(+s.dur))+" · "+(STATUS[s.status]||STATUS.scheduled)[0]+"</span></button>";});
+    h+='<button class="ev'+cls+'" data-act="edit-session" data-id="'+s.id+'" style="top:'+(top_+1)+"px;height:"+ht+"px;border-inline-start-color:"+sc(s)+'"><b>'+esc(p.name)+'</b><span class="num">'+s.time+"-"+fromMin(toMin(s.time)+(+s.dur))+" · "+(STATUS[s.status]||STATUS.scheduled)[0]+"</span></button>";});
   if(sel===t){var nm=nowMin();if(nm>=st*60&&nm<=en*60)h+='<div class="nowline" style="top:'+((nm-st*60)/60*HH)+'px"></div>';}
   h+="</div>";
   return h;
@@ -371,7 +372,7 @@ function sessionForm(s,isNew,preset){
     function syncCharge(){r.querySelector("#cw").hidden=!(st==="noshow"||st==="cancel");}
     syncCharge();
     r.querySelector("#s_st").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;st=b.dataset.v;r.querySelectorAll("#s_st button").forEach(function(x){x.classList.toggle("on",x===b);});
-      if(st==="noshow")r.querySelector("#s_c").checked=!!S.settings.chargeNoShow;if(st==="cancel")r.querySelector("#s_c").checked=false;syncCharge();});
+      if(st==="noshow"||st==="cancel")r.querySelector("#s_c").checked=false;if(st==="done")r.querySelector("#s_pd").checked=true;syncCharge();});
     r.querySelector("#s_p").addEventListener("change",function(){var p=P(this.value);if(p)r.querySelector("#s_pr").value=p.price;});
     function chk(){var tmp={id:s.id,date:val(r,"s_d"),time:val(r,"s_t")||"00:00",dur:+val(r,"s_u")||45};r.querySelector("#clash").innerHTML=(tmp.date&&clashes(tmp))?'<div class="warnbox">שימי לב: יש כבר טיפול בשעה הזו</div>':"";}
     ["s_d","s_t","s_u"].forEach(function(id){r.querySelector("#"+id).addEventListener("input",chk);});chk();
@@ -380,9 +381,13 @@ function sessionForm(s,isNew,preset){
     var pc=r.querySelector("#s_pc");if(pc)pc.onclick=function(){payConfirm(s);};
     var rem=r.querySelector("#s_rem");if(rem)rem.onclick=function(){remind(s.id);};
     var del=r.querySelector("#s_del");if(del)del.onclick=function(){
-      var fut=s.series?S.sessions.filter(function(o){return o.series===s.series&&o.date>=s.date&&o.status==="scheduled"&&o.id!==s.id;}).length:0;
-      confirmIn(r,fut?"למחוק רק את הטיפול הזה, או גם את "+fut+" הטיפולים הבאים בסדרה?":"למחוק את הטיפול?", "מחיקת הטיפול",function(){S.sessions=S.sessions.filter(function(o){return o.id!==s.id;});save();closeSheet();render();toast("הטיפול נמחק");});
-      if(fut){var box=r.querySelector(".warnbox.cf .actions");var b=document.createElement("button");b.type="button";b.className="mini bad";b.textContent="מחיקת כל הסדרה מכאן";b.onclick=function(){S.sessions=S.sessions.filter(function(o){return!(o.series===s.series&&(o.id===s.id||(o.date>=s.date&&o.status==="scheduled")));});save();closeSheet();render();toast("הסדרה נמחקה");};box.insertBefore(b,box.children[1]);}
+      var fut=futureOf(s);
+      if(!fut.length){confirmIn(r,"למחוק את הטיפול?","מחיקת הטיפול",function(){S.sessions=S.sessions.filter(function(o){return o.id!==s.id;});save();closeSheet();render();toast("הטיפול נמחק");});return;}
+      var p0=P(s.pid)||{name:""};
+      sheet('<h3>מחיקת טיפול</h3><p style="color:var(--ink-2);margin:0 0 12px">'+esc(p0.name)+' · '+niceDate(s.date)+' '+s.time+'</p><div class="list"><button class="btn block danger" type="button" id="dl1">רק את הטיפול הזה</button><button class="btn block danger" type="button" id="dlall">גם את כל '+fut.length+' הטיפולים הבאים</button><button class="btn block ghost" type="button" id="dlx">ביטול</button></div>',function(r2){
+        r2.querySelector("#dl1").onclick=function(){S.sessions=S.sessions.filter(function(o){return o.id!==s.id;});save();closeSheet();render();toast("הטיפול נמחק");};
+        r2.querySelector("#dlall").onclick=function(){var ids={};ids[s.id]=1;fut.forEach(function(o){ids[o.id]=1;});S.sessions=S.sessions.filter(function(o){return!ids[o.id];});save();closeSheet();render();toast("נמחקו "+(fut.length+1)+" טיפולים");};
+        r2.querySelector("#dlx").onclick=closeSheet;});
     };
     r.querySelector("#sf").addEventListener("submit",function(e){e.preventDefault();
       var o={pid:val(r,"s_p"),date:val(r,"s_d"),time:val(r,"s_t"),dur:+val(r,"s_u")||45,price:+val(r,"s_pr")||0,method:val(r,"s_m"),paid:r.querySelector("#s_pd").checked,note:val(r,"s_n").trim(),status:st,charge:(st==="noshow"||st==="cancel")?r.querySelector("#s_c").checked:false};
@@ -419,7 +424,8 @@ function newSession(preset){
   preset=preset||{};
   var d=preset.date||(UI.tab==="cal"?UI.sel:today());
   var t=preset.time||(function(){if(d!==today())return"16:00";var m=Math.ceil((nowMin()+15)/15)*15;return fromMin(Math.min(m,23*60));})();
-  sessionForm({id:null,pid:preset.pid||null,date:d,time:t,dur:S.settings.dur,price:S.settings.price,status:"scheduled",charge:false,paid:false,method:"ביט",note:""},true,preset);
+  var pp=preset.pid&&P(preset.pid);
+  sessionForm({id:null,pid:preset.pid||null,date:d,time:t,dur:S.settings.dur,price:(pp&&pp.price)||S.settings.price,status:"scheduled",charge:false,paid:false,method:"ביט",note:""},true,preset);
 }
 
 function patientForm(p){
@@ -521,15 +527,15 @@ function settings(){
   var h='<h3>הגדרות</h3><form id="gf"><div class="two"><div class="f"><label for="g_n">השם שלך</label><input id="g_n" value="'+esc(st.name)+'"></div><div class="f"><label for="g_em">שם המעסיק</label><input id="g_em" value="'+esc(st.employer||"")+'" placeholder="לדוחות למעסיק"></div></div>';
   h+='<div class="two"><div class="f"><label for="g_p">מחיר ברירת מחדל (₪)</label><input id="g_p" type="number" inputmode="numeric" value="'+st.price+'"></div><div class="f"><label for="g_d">משך טיפול (דק׳)</label><input id="g_d" type="number" inputmode="numeric" value="'+st.dur+'"></div></div>';
   h+='<div class="two"><div class="f"><label for="g_s">יומן מתחיל ב-</label><input id="g_s" type="number" min="0" max="23" value="'+st.dayStart+'"></div><div class="f"><label for="g_e">ומסתיים ב-</label><input id="g_e" type="number" min="1" max="24" value="'+st.dayEnd+'"></div></div>';
-  h+='<label class="switch" for="g_oc"><span>צבע אחיד לכל המטופלים ביומן</span><input id="g_oc" type="checkbox"'+(st.oneColor!==false?" checked":"")+'></label><label class="switch" for="g_c"><span>לחייב כברירת מחדל כשילד לא מגיע</span><input id="g_c" type="checkbox"'+(st.chargeNoShow?" checked":"")+"></label>";
+  h+='<label class="switch" for="g_oc"><span>צבע אחיד לכל המטופלים ביומן</span><input id="g_oc" type="checkbox"'+(st.oneColor!==false?" checked":"")+'></label>';
   h+='<div class="foot"><button class="btn" type="submit">שמירה</button></div></form>';
   h+='<section><h2>נעילה בקוד</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">קוד של 4 ספרות שמסתיר את המידע כשמישהו אחר מחזיק את הטלפון.</p><div class="actions">'+(st.pinHash?'<button class="mini" data-act="pin-set">החלפת קוד</button><button class="mini bad" data-act="pin-off">ביטול נעילה</button>':'<button class="mini acc" data-act="pin-set">הגדרת קוד</button>')+"</div></div></section>";
   h+='<section><h2>גיבוי ושחזור</h2><div class="card pad" style="font-size:14.5px"><p style="margin:0 0 10px;color:var(--ink-2)">המידע מוצפן במכשיר שלך לפני שהוא נשמר בענן, ומסונכרן בין הטלפון למחשב. גיבוי לקובץ אחת לחודש הוא שכבת ביטחון נוספת. גיבוי אחרון: <b>'+(lb?lb.toLocaleDateString("he-IL"):"אף פעם")+'</b></p><div class="actions"><button class="mini acc" data-act="backup">שמירת גיבוי</button><label class="mini acc" for="impf">ייבוא מטופלים (בלי למחוק)<input id="impf" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><label class="mini" for="restore">שחזור מקובץ<input id="restore" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label></div><div id="rs"></div></div></section>';
-  h+='<section><h2>נתונים <small>גרסה 11</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
+  h+='<section><h2>נתונים <small>גרסה 14</small></h2><div class="card pad" style="font-size:14.5px;color:var(--ink-2)">'+S.patients.length+" מטופלים · "+S.sessions.length+" טיפולים · "+S.expenses.length+' הוצאות<div class="actions" style="margin-top:10px">'+(S.demo?'<button class="mini" data-act="clear-demo">מחיקת נתוני הדוגמה</button>':"")+'<button class="mini" data-act="logout">התנתקות מהמכשיר הזה</button>'+"</div></div></section>";
   sheet(h,function(r){
     r.querySelector("#gf").addEventListener("submit",function(e){e.preventDefault();
       st.name=val(r,"g_n").trim()||"חן";st.employer=val(r,"g_em").trim();st.price=+val(r,"g_p")||0;st.dur=+val(r,"g_d")||45;
-      var a=Math.max(0,Math.min(23,+val(r,"g_s"))),b=Math.max(a+1,Math.min(24,+val(r,"g_e")));st.dayStart=a;st.dayEnd=b;st.chargeNoShow=r.querySelector("#g_c").checked;st.oneColor=r.querySelector("#g_oc").checked;
+      var a=Math.max(0,Math.min(23,+val(r,"g_s"))),b=Math.max(a+1,Math.min(24,+val(r,"g_e")));st.dayStart=a;st.dayEnd=b;st.oneColor=r.querySelector("#g_oc").checked;
       save();closeSheet();render();toast("ההגדרות נשמרו");});
     r.querySelector("#impf").addEventListener("change",function(){var f=this.files[0];if(!f)return;var fr=new FileReader();fr.onload=function(){
       var data;try{data=JSON.parse(fr.result);}catch(e){r.querySelector("#rs").innerHTML='<div class="warnbox" style="margin-top:10px">הקובץ לא נקרא.</div>';return;}
@@ -628,49 +634,75 @@ function exportEmployer(){
 
 /* ---------- events ---------- */
 /* ---------- drag to move (day + week views) ---------- */
+/* mouse: click-drag. touch (iPhone): press and hold ~0.3s, then drag. */
 var drag=null,suppressClick=false;
 function dragTarget(x,y){var el=document.elementFromPoint(x,y);return el&&el.closest('.timeline,.wkcol');}
-document.addEventListener("pointerdown",function(e){
-  var ev=e.target.closest(".ev,.wev");if(!ev||e.button>0)return;
+function beginDrag(ev,x,y,touch){
   var r=ev.getBoundingClientRect();
-  drag={el:ev,id:ev.dataset.id,x0:e.clientX,y0:e.clientY,offY:e.clientY-r.top,active:false,touch:e.pointerType!=="mouse",ghost:null,timer:null};
-  if(drag.touch)drag.timer=setTimeout(function(){if(drag&&!drag.active)startDrag(e.clientX,e.clientY);},350);
-});
-function startDrag(x,y){
+  drag={el:ev,id:ev.dataset.id,x0:x,y0:y,offY:y-r.top,active:false,touch:touch,ghost:null,timer:null};
+  if(touch)drag.timer=setTimeout(function(){if(drag&&!drag.active)startDrag();},300);
+}
+function startDrag(){
   if(!drag)return;drag.active=true;
   var r=drag.el.getBoundingClientRect(),g=drag.el.cloneNode(true);
-  g.className+=" ghost";g.style.cssText="position:fixed;left:"+r.left+"px;top:"+r.top+"px;width:"+r.width+"px;height:"+r.height+"px;z-index:90;opacity:.9;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25);"+(drag.el.className.indexOf("wev")>-1?"background:"+drag.el.style.background:"");
+  g.className+=" ghost";g.style.cssText="position:fixed;inset:auto;margin:0;left:"+r.left+"px;top:"+r.top+"px;width:"+r.width+"px;height:"+r.height+"px;z-index:90;opacity:.92;pointer-events:none;box-shadow:0 10px 26px rgba(0,0,0,.28);transform:scale(1.04);"+(drag.el.className.indexOf("wev")>-1?"background:"+drag.el.style.background:"");
   document.body.appendChild(g);drag.ghost=g;drag.el.style.opacity=".3";
-  if(navigator.vibrate)try{navigator.vibrate(15);}catch(x){}
+  var tip=document.createElement("div");tip.className="dragtip num";tip.style.display="none";document.body.appendChild(tip);drag.tip=tip;
+  try{if(window.getSelection)window.getSelection().removeAllRanges();}catch(x){}
+  try{if(navigator.vibrate)navigator.vibrate(15);}catch(x){}
 }
-document.addEventListener("pointermove",function(e){
-  if(!drag)return;
-  var dx=e.clientX-drag.x0,dy=e.clientY-drag.y0;
-  if(!drag.active){
-    if(drag.touch){if(Math.abs(dx)>10||Math.abs(dy)>10){clearTimeout(drag.timer);drag=null;}return;}
-    if(Math.abs(dx)+Math.abs(dy)>6)startDrag(e.clientX,e.clientY);else return;
-  }
-  var r=drag.el.getBoundingClientRect();
+function moveDrag(x,y){
+  var r=drag.el.getBoundingClientRect(),dx=x-drag.x0,dy=y-drag.y0;
   drag.ghost.style.left=(r.left+dx)+"px";drag.ghost.style.top=(r.top+dy)+"px";
-  document.querySelectorAll(".droptarget").forEach(function(x){x.classList.remove("droptarget");});
-  var t=dragTarget(e.clientX,e.clientY);if(t)t.classList.add("droptarget");
-});
-document.addEventListener("touchmove",function(e){if(drag&&drag.active)e.preventDefault();},{passive:false});
-function endDrag(e,cancel){
+  document.querySelectorAll(".droptarget").forEach(function(t){t.classList.remove("droptarget");});
+  var at=dropAt(x,y);if(at)at.el.classList.add("droptarget");
+  if(drag.tip){if(at){var s0=SS(drag.id);drag.tip.textContent=DAYS_S[pd(at.date).getDay()]+" "+shortDate(at.date)+" · "+at.time+"-"+fromMin(toMin(at.time)+(+(s0&&s0.dur)||45));drag.tip.style.display="block";var gn=drag.ghost.querySelector(".num");if(gn)gn.textContent=drag.ghost.classList.contains("wev")?at.time:at.time+"-"+fromMin(toMin(at.time)+(+(s0&&s0.dur)||45));drag.tip.style.top=Math.max(8,y-drag.offY-44)+"px";}else drag.tip.style.display="none";}
+}
+function dropAt(x,y){
+  var t=dragTarget(x,y);if(!t||!drag)return null;
+  var rect=t.getBoundingClientRect(),hh=+(t.dataset.hh||64),st=+t.dataset.start;
+  var m=st*60+Math.round(((y-drag.offY)-rect.top)/hh*60/15)*15;m=Math.max(0,Math.min(23*60+45,m));
+  return{el:t,date:t.dataset.date,time:fromMin(m)};
+}
+function finishDrag(x,y,cancel){
   if(!drag)return;clearTimeout(drag.timer);
   var d=drag;drag=null;
   if(!d.active)return;
-  suppressClick=true;setTimeout(function(){suppressClick=false;},400);
-  if(d.ghost)d.ghost.remove();d.el.style.opacity="";
-  document.querySelectorAll(".droptarget").forEach(function(x){x.classList.remove("droptarget");});
+  suppressClick=true;setTimeout(function(){suppressClick=false;},500);
+  if(d.ghost)d.ghost.remove();if(d.tip)d.tip.remove();d.el.style.opacity="";
+  document.querySelectorAll(".droptarget").forEach(function(t){t.classList.remove("droptarget");});
   if(cancel)return;
-  var t=dragTarget(e.clientX,e.clientY),s=SS(d.id);if(!t||!s)return;
-  var rect=t.getBoundingClientRect(),hh=+(t.dataset.hh||64),st=+t.dataset.start;
-  var m=st*60+Math.round(((e.clientY-d.offY)-rect.top)/hh*60/15)*15;m=Math.max(0,Math.min(23*60+45,m));
-  moveSession(s,t.dataset.date,fromMin(m));
+  drag=d;var at=dropAt(x,y);drag=null;var s=SS(d.id);if(!at||!s)return;
+  moveSession(s,at.date,at.time);
 }
-document.addEventListener("pointerup",function(e){endDrag(e,false);});
-document.addEventListener("pointercancel",function(e){endDrag(e,true);});
+/* mouse */
+document.addEventListener("pointerdown",function(e){
+  if(e.pointerType!=="mouse"||e.button>0)return;
+  var ev=e.target.closest(".ev,.wev");if(!ev)return;beginDrag(ev,e.clientX,e.clientY,false);
+});
+document.addEventListener("pointermove",function(e){
+  if(!drag||drag.touch)return;
+  if(!drag.active){if(Math.abs(e.clientX-drag.x0)+Math.abs(e.clientY-drag.y0)>6)startDrag();else return;}
+  moveDrag(e.clientX,e.clientY);
+});
+document.addEventListener("pointerup",function(e){if(drag&&!drag.touch)finishDrag(e.clientX,e.clientY,false);});
+/* touch */
+document.addEventListener("touchstart",function(e){
+  if(e.touches.length!==1)return;var ev=e.target.closest(".ev,.wev");if(!ev)return;
+  var t=e.touches[0];beginDrag(ev,t.clientX,t.clientY,true);
+},{passive:true});
+document.addEventListener("touchmove",function(e){
+  if(!drag||!drag.touch)return;var t=e.touches[0];
+  if(!drag.active){if(Math.abs(t.clientX-drag.x0)>10||Math.abs(t.clientY-drag.y0)>10){clearTimeout(drag.timer);drag=null;}return;}
+  e.preventDefault();moveDrag(t.clientX,t.clientY);
+},{passive:false});
+document.addEventListener("touchend",function(e){
+  if(!drag||!drag.touch)return;var t=e.changedTouches[0];
+  if(drag.active)e.preventDefault();
+  finishDrag(t.clientX,t.clientY,false);
+},{passive:false});
+document.addEventListener("touchcancel",function(){if(drag&&drag.touch)finishDrag(0,0,true);});
+document.addEventListener("contextmenu",function(e){if(e.target.closest(".ev,.wev"))e.preventDefault();});
 document.addEventListener("click",function(e){if(suppressClick){e.stopPropagation();e.preventDefault();suppressClick=false;}},true);
 function moveSession(s,date,time){
   if(s.date===date&&s.time===time)return;
@@ -707,7 +739,7 @@ document.addEventListener("click",function(e){
       newSession({date:a.dataset.date,time:fromMin(m)});break;
     case"new-session":newSession({pid:a.dataset.pid});break;
     case"edit-session":var s=SS(id);if(s)sessionForm(s,false);break;
-    case"st":var s2=SS(id);if(s2){s2.status=v;if(v==="noshow")s2.charge=!!S.settings.chargeNoShow;save();render();toast(v==="done"?"סומן כבוצע":"סומן: לא הגיע");}break;
+    case"st":var s2=SS(id);if(s2){s2.status=v;if(v==="noshow")s2.charge=false;if(v==="done")s2.paid=true;save();render();toast(v==="done"?"סומן כבוצע":"סומן: לא הגיע");}break;
     case"paid":var s3=SS(id);if(s3){s3.paid=true;save();render();toast("סומן כשולם");}break;
     case"pay-all":S.sessions.forEach(function(s){if(s.pid===id&&billable(s))s.paid=true;});save();render();toast("הכל סומן כשולם");break;
     case"remind":remind(id);break;
@@ -742,7 +774,14 @@ document.addEventListener("visibilitychange",function(){if(document.hidden&&S.se
 
 /* one-time data fixes (names matched by hash, never stored in code) */
 function nh(s){s=String(s||"").replace(/\s+/g," ").trim();var x=5381;for(var i=0;i<s.length;i++){x=((x<<5)+x+s.charCodeAt(i))|0;}return x;}
-function fixups(){return false;}
+function fixups(){
+  var K="chen-fix13";try{if(localStorage.getItem(K))return false;}catch(x){return false;}
+  if(!S.sessions.length)return false;
+  var t=today(),ch=false;
+  S.sessions.forEach(function(s){if(s.date<=t){if(s.status==="done"&&!s.paid){s.paid=true;ch=true;}if(s.status==="noshow"&&s.charge){s.charge=false;ch=true;}}});
+  try{localStorage.setItem(K,"1");}catch(x){}
+  return ch;
+}
 function fix1(){
   if(S.settings.fix1)return false;
   var t=S.patients.filter(function(p){return nh(p.name)===1436732829;})[0];
